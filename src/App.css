@@ -312,6 +312,43 @@
   color: #48dbfb;
 }
 
+/* Map square crop */
+.map-section {
+  margin: 1.25rem 0 2rem;
+  display: flex;
+  justify-content: center;
+}
+.map-crop {
+  width: 100%;
+  max-width: 900px; /* adjust max size as desired */
+}
+.map-square {
+  position: relative;
+  width: 100%;
+  /* Make it a square by using padding-top = width */
+  padding-top: 100%;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.2);
+}
+.map-inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* Ensure leaflet canvas fills the square and matches style */
+.map-inner .leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+}
+
 /* Results */
 .results-container {
   background: rgba(255, 255, 255, 0.05);
@@ -477,5 +514,11 @@
 
   .map-container {
     padding: 1rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .map-crop {
+    max-width: 100%;
   }
 }

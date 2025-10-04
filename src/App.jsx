@@ -3,6 +3,20 @@
 import { useState, useEffect } from "react"
 import "./App.css"
 
+// react-leaflet + leaflet for interactive map
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet"
+import L from "leaflet"
+import "leaflet/dist/leaflet.css"
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png"
+import markerIcon from "leaflet/dist/images/marker-icon.png"
+import markerShadow from "leaflet/dist/images/marker-shadow.png"
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+})
+
 function buildApiUrl(startDate, endDate) {
   return `/api/nasa/meteors?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`
 }
@@ -20,9 +34,39 @@ function App() {
   const [endDate, setEndDate] = useState(today)
   const [hazardousOnly, setHazardousOnly] = useState(false)
 
+  // small state to keep map instance if needed
+  const [mapInstance, setMapInstance] = useState(null)
+
   useEffect(() => {
     fetchForRange(startDate, endDate)
   }, [])
+
+  // deterministic pseudo-random lat/lng from a string id
+  function idToLatLng(id) {
+    let h1 = 0
+    for (let i = 0; i < id.length; i++) {
+      h1 = (h1 * 31 + id.charCodeAt(i)) >>> 0
+    }
+    // Map hash to ranges: lat in [-75,75], lon in [-180,180]
+    const lat = ((h1 % 15000) / 15000) * 150 - 75
+    const lon = ((Math.floor(h1 / 15000) % 36000) / 36000) * 360 - 180
+    return [Number(lat.toFixed(6)), Number(lon.toFixed(6))]
+  }
+
+  useEffect(() => {
+    if (mapInstance) {
+      // optional: fit bounds to markers when meteors change
+      const list = (hazardousOnly ? meteors.filter((m) => m.is_potentially_hazardous_asteroid) : meteors)
+      if (list.length === 0) return
+      const coords = list.slice(0, 200).map((m) => idToLatLng(m.id))
+      const bounds = coords.map((c) => [c[0], c[1]])
+      try {
+        mapInstance.fitBounds(bounds, { maxZoom: 6, padding: [40, 40] })
+      } catch (e) {
+        // ignore if bounds invalid
+      }
+    }
+  }, [meteors, hazardousOnly, mapInstance])
 
   // no simulation effects
 
@@ -143,6 +187,46 @@ function App() {
         )}
 
         {error && <div className="error-message">❌ {error}</div>}
+
+        {/* Map: square cropped container above the list */}
+        {!loading && !error && meteors.length > 0 && (
+          <section className="map-section">
+            <div className="map-crop">
+              <div className="map-square">
+                <div className="map-inner">
+                  <MapContainer
+                    center={[0, 0]}
+                    zoom={2}
+                    scrollWheelZoom={true}
+                    style={{ height: "100%", width: "100%" }}
+                    whenCreated={(map) => setMapInstance(map)}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    {filteredMeteors.slice(0, 200).map((meteor) => {
+                      const [lat, lon] = idToLatLng(meteor.id)
+                      const approach = meteor.close_approach_data?.[0]
+                      return (
+                        <Marker key={meteor.id} position={[lat, lon]}>
+                          <Popup>
+                            <div style={{ maxWidth: 240 }}>
+                              <strong>{meteor.name}</strong>
+                              <div>Diâmetro aprox: {meteor.estimated_diameter ? (((meteor.estimated_diameter.meters.estimated_diameter_min + meteor.estimated_diameter.meters.estimated_diameter_max) / 2).toFixed(3)) + " m" : "—"}</div>
+                              {approach && <div>Data de aproximação: {approach.close_approach_date}</div>}
+                              <div>Perigoso: {meteor.is_potentially_hazardous_asteroid ? "Sim" : "Não"}</div>
+                            </div>
+                          </Popup>
+                        </Marker>
+                      )
+                    })}
+                  </MapContainer>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {!loading && !error && meteors.length > 0 && (
           <section className="meteor-selection">
