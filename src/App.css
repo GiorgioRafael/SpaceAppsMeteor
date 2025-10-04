@@ -480,7 +480,63 @@
   color: #feca57;
 }
 
-/* Responsive */
+/* Selected location banner */
+.selected-location-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(72, 219, 251, 0.06);
+  border: 1px solid rgba(72, 219, 251, 0.12);
+  border-radius: 10px;
+  color: #48dbfb;
+  margin-bottom: 1rem;
+}
+
+.selected-actions .btn {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+/* Simulation modal */
+.sim-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2,6,23,0.7);
+  z-index: 2000;
+  padding: 1rem;
+}
+
+.sim-modal {
+  background: linear-gradient(180deg, rgba(20,20,40,0.98), rgba(8,8,18,0.98));
+  border-radius: 12px;
+  padding: 1.25rem;
+  max-width: 520px;
+  width: 100%;
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 12px 40px rgba(2,6,23,0.8);
+}
+
+.sim-modal h3 {
+  margin-bottom: 0.5rem;
+  color: #feca57;
+}
+
+/* asteroid icon small tweak */
+.asteroid-icon img {
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,0.45));
+}
+
+/* small responsive tweak */
+@media (max-width: 420px) {
+  .selected-pin .pin-outer { width: 28px; height: 28px; }
+  .selected-pin .pin-inner { width: 12px; height: 12px; top: 5px; }
+}
+
 @media (max-width: 768px) {
   .header-content h1 {
     font-size: 1.8rem;
