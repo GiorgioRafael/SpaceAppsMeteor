@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
 
 // Prefer API key from Vite env (VITE_NASA_API_KEY). Falls back to the key you provided.
@@ -22,17 +20,14 @@ function formatKmRange(diameter) {
 function MeteorItem({ m }) {
   const approach = m.close_approach_data && m.close_approach_data[0]
   return (
-    <li className="meteor">
+    <li className={"meteor" + (m.is_potentially_hazardous_asteroid ? ' hazardous' : '')}>
       <div className="meteor-header">
-        <h3>{m.name}</h3>
-        <span
-          className={
-            'hazard ' + (m.is_potentially_hazardous_asteroid ? 'yes' : 'no')
-          }
-          title={m.is_potentially_hazardous_asteroid ? 'Potentially hazardous' : 'Not hazardous'}
-        >
-          {m.is_potentially_hazardous_asteroid ? '⚠️' : '✅'}
-        </span>
+        <h3 className="meteor-name">{m.name}</h3>
+        {m.is_potentially_hazardous_asteroid ? (
+          <span className="hazard yes" title="Perigoso">⚠️ PERIGOSO</span>
+        ) : (
+          <span className="hazard no" title="Não perigoso">✓ Seguro</span>
+        )}
       </div>
 
       <div className="meteor-body">
@@ -161,14 +156,8 @@ function App() {
     <div>
       <header className="app-header">
         <div className="logos">
-          <a href="https://vite.dev" target="_blank" rel="noreferrer">
-            <img src={viteLogo} className="logo" alt="Vite logo" />
-          </a>
-          <a href="https://react.dev" target="_blank" rel="noreferrer">
-            <img src={reactLogo} className="logo react" alt="React logo" />
-          </a>
         </div>
-        <h1>Meteoros próximos à atmosfera — 2025-10-04</h1>
+        <h1>Meteoros próximos à atmosfera</h1>
         <p className="subtitle">Fonte: NASA NEO Feed (próximo objeto à Terra). Lista com informações básicas.</p>
       </header>
 

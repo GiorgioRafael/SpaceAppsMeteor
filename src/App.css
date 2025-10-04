@@ -5,42 +5,6 @@
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
-}
-
 .app-header {
   margin-bottom: 1.5rem;
 }
@@ -80,16 +44,37 @@
   justify-content: space-between;
   align-items: center;
 }
+.meteor-name {
+  color: #0b1720; /* name darker for better readability */
+  margin: 0;
+  font-size: 1.05rem;
+}
+.hazard {
+  font-weight: 700;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
 .hazard.yes {
-  color: #b22222;
+  color: #fff;
+  background: linear-gradient(90deg,#db2b2b,#b22222);
+  box-shadow: 0 4px 10px rgba(178,34,34,0.25);
 }
 .hazard.no {
-  color: #2e8b57;
+  color: #fff;
+  background: linear-gradient(90deg,#2e8b57,#1f7a4f);
+}
+.meteor.hazardous {
+  border-color: #f2c1c1;
+  background: linear-gradient(180deg,#fff6f6,#fff);
 }
 .meteor-body {
   margin-top: 0.5rem;
   font-size: 0.95rem;
   color: #222;
+}
+h1{
+  color: black;
 }
 .meteor-body .approach {
   margin-top: 0.5rem;
