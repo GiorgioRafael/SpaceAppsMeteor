@@ -71,6 +71,18 @@ function App() {
   const mapSectionRef = useRef(null)
   const resultsSectionRef = useRef(null)
 
+    // Densidade populacional: templates e customizado
+  const densityTemplates = {
+    "Zona Rural": 50,
+    "Subúrbio": 500,
+    "Área Urbana": 2000,
+    "Metrópole Densa": 10000,
+  }
+  const [selectedDensityTemplate, setSelectedDensityTemplate] = useState("Subúrbio")
+  const [customDensity, setCustomDensity] = useState(500)
+  const isCustomDensity = selectedDensityTemplate === "Customizado"
+  const effectiveDensity = isCustomDensity ? customDensity : densityTemplates[selectedDensityTemplate]
+
   useEffect(() => {
     if (!selectedMeteor) return
     const approach = selectedMeteor.close_approach_data?.[0]
@@ -149,7 +161,7 @@ function App() {
         let data
         try {
           data = bodyText ? JSON.parse(bodyText) : {}
-        } catch (parseErr) {
+        } catch {
           const snippet = bodyText ? bodyText.slice(0, 500) : "[vazio]"
           const lower = snippet.toLowerCase()
           if (lower.includes("<!doctype") || lower.includes("<html")) {
@@ -219,18 +231,18 @@ function App() {
     // Compute population estimates only when starting the simulation
     if (zones) {
       const areaFor = (radiusMeters) => (Math.PI * Math.pow(radiusMeters, 2)) / 1e6 // km^2
-      // Default density assumption (people/km²). Could be replaced by an API-based lookup later
-      const estimatedDensity = 500
       const estimates = {
-        crater: Math.round(estimatedDensity * areaFor(zones.craterRadius)),
-        severe: Math.round(estimatedDensity * areaFor(zones.severeRadius)),
-        moderate: Math.round(estimatedDensity * areaFor(zones.moderateRadius)),
-        light: Math.round(estimatedDensity * areaFor(zones.lightRadius)),
+        crater: Math.round(effectiveDensity * areaFor(zones.craterRadius)),
+        severe: Math.round(effectiveDensity * areaFor(zones.severeRadius)),
+        moderate: Math.round(effectiveDensity * areaFor(zones.moderateRadius)),
+        light: Math.round(effectiveDensity * areaFor(zones.lightRadius)),
       }
       setPopulationData({
         estimates,
-        source: "Estimativa baseada em densidade populacional média",
-        confidence: "medium",
+        source: isCustomDensity
+          ? `Estimativa personalizada: ${customDensity} pessoas/km²`
+          : `Template: ${selectedDensityTemplate} (${densityTemplates[selectedDensityTemplate]} pessoas/km²)`,
+        confidence: isCustomDensity ? "low" : "medium",
       })
     }
   }
@@ -249,31 +261,107 @@ function App() {
     const diameterObj = meteor.estimated_diameter?.meters
     if (!diameterObj) return null
 
-    const avgDiameter = (diameterObj.estimated_diameter_min + diameterObj.estimated_diameter_max) / 2
-
+    // 1) Geometria e propriedades do projétil
+    const avgDiameter = (diameterObj.estimated_diameter_min + diameterObj.estimated_diameter_max) / 2 // m
     const r = avgDiameter / 2
-    const density = opts.density || userDensity || 3000
+    const density = opts.density || userDensity || 3000 // kg/m³ (comum: rochoso ~3000, ferroso ~7800)
     const volume = (4 / 3) * Math.PI * Math.pow(r, 3)
-    const mass = volume * density
+    const mass = volume * density // kg
 
-    const v = opts.velocity || userVelocity || 20000
+    // 2) Velocidade de impacto com foco gravitacional opcional
+    const vIn = opts.velocity || userVelocity || 20000 // m/s
+    const considerGravity = opts.considerGravity !== false
+    const vEsc = 11200 // m/s (Terra)
+    const v = considerGravity ? Math.sqrt(vIn * vIn + vEsc * vEsc) : vIn
 
+    // 3) Ângulo de entrada
     const angleDeg = opts.angle || userAngle || 45
     const angleRad = (angleDeg * Math.PI) / 180
+    const sinTheta = Math.max(Math.sin(angleRad), 0.1)
 
+    // 4) Energia cinética
     const energyJ = 0.5 * mass * v * v
-    const energyMt = energyJ / 4.184e15
+    const energyMt = energyJ / 4.184e15 // megatons TNT
+    const energyKt = energyJ / 4.184e12 // kilotons TNT
 
-    const effectiveFactor = Math.max(Math.sin(angleRad), 0.1)
-    const energyEffectiveMt = energyMt * effectiveFactor
+    // 5) Ambiente/Alvo
+    const rhoTarget = 2500 // kg/m³, alvo rochoso médio
+    const g = 9.81 // m/s²
 
-    const craterFromEnergy = 1000 * Math.pow(Math.max(energyEffectiveMt, 1e-12), 1 / 3)
-    const craterFromSize = avgDiameter * 10
-    const craterRadius = Math.max(craterFromEnergy, craterFromSize)
+    // 6) Checagem simples de airburst (ruptura na atmosfera)
+    //    Estimamos altitude onde pressão dinâmica = resistência do material.
+    //    rho(h) ~ rho0 * exp(-h/H), com H ~ 8 km.
+    const rho0 = 1.225 // kg/m³ (nível do mar)
+    const H = 8000 // m
+    // Resistência aproximada (Pa) por tipo: ferro ~5 MPa, rochoso ~1 MPa, frágil ~0.2 MPa
+    let strength
+    if (density >= 7000) strength = 5e6
+    else if (density >= 2500) strength = 1e6
+    else strength = 2e5
 
-    const severeRadius = craterRadius * 1.5
-    const moderateRadius = craterRadius * 3
-    const lightRadius = craterRadius * 6
+    // Altitude de fragmentação aproximada: h = H * ln((rho0 * v^2) / (2 * S))
+  const fragArgument = (rho0 * v * v) / (2 * strength)
+  const hFrag = Math.log(Math.max(fragArgument, 1e-9)) * H // pode ser negativo (sem fragmentação)
+  // Regras mais conservadoras: airburst para objetos bem pequenos e menos densos
+  const likelyAirburst = hFrag > 0 && avgDiameter < 50 && density < 5000
+
+    // 7) Tamanho da cratera via leis de escala π (forma simplificada/gravity regime)
+    //    D_final ~ K * g^-0.17 * (rho_p/rho_t)^0.26 * d^0.78 * (v*sinθ)^0.44
+    //    Coeficiente K ajustado para Terra/alvo rochoso. Ajuste empírico: K ≈ 20 (unidades em metros).
+    const Kc = 20
+    const densityRatio = density / rhoTarget
+    let Dsimple =
+      Kc *
+      Math.pow(g, -0.17) *
+      Math.pow(densityRatio, 0.26) *
+      Math.pow(Math.max(avgDiameter, 0), 0.78) *
+      Math.pow(Math.max(v * sinTheta, 0), 0.44)
+    if (!Number.isFinite(Dsimple)) Dsimple = 0
+    // Correção rudimentar para crateras complexas (> ~3 km): aumenta ~30%
+    let Dfinal = Dsimple > 3000 ? Dsimple * 1.3 : Dsimple
+    let craterRadius = likelyAirburst ? 0 : Dfinal / 2
+
+    // 8) Zonas de dano por sobrepressão (aproximação R ∝ W^(1/3))
+    //    Usamos limiares típicos: 20 psi (severa), 5 psi (moderada), 1 psi (leve),
+    //    com constantes aproximadas em metros por kt^(1/3).
+    //    Para impacto no solo, apenas fração da energia vira onda de choque atmosférica.
+    const cubeRoot = (x) => (x <= 0 ? 0 : Math.cbrt ? Math.cbrt(x) : Math.pow(x, 1 / 3))
+
+    let severeRadius
+    let moderateRadius
+    let lightRadius
+
+    if (!likelyAirburst) {
+      const couplingBlast = 0.3 // fração da energia convertida em blast atmosférico
+      const Wkt = couplingBlast * energyKt
+      const k20 = 180 // m/kt^(1/3)
+      const k5 = 600 // m/kt^(1/3)
+      const k1 = 1500 // m/kt^(1/3)
+      const f = cubeRoot(Wkt)
+      severeRadius = Math.max(k20 * f, craterRadius * 1.1)
+      moderateRadius = Math.max(k5 * f, severeRadius * 1.2)
+      lightRadius = Math.max(k1 * f, moderateRadius * 1.2)
+    } else {
+      // Airburst: maior acoplamento com o ar, porém atenuação com altitude
+      const h = Math.min(Math.max(hFrag, 3000), 40000) // limita entre 3-40 km
+      const couplingAir = 0.7
+      const WktEff = couplingAir * energyKt
+      const attenuation = Math.exp(-h / 10000) // atenuação simples de efeito ao solo
+      const k20 = 180
+      const k5 = 600
+      const k1 = 1500
+      const f = cubeRoot(WktEff) * attenuation
+      severeRadius =  k20 * f
+      moderateRadius = k5 * f
+      lightRadius =   k1 * f
+    }
+
+    // 9) Pequenas salvaguardas numéricas
+    const minVal = 0
+    craterRadius = Math.max(minVal, craterRadius || 0)
+    severeRadius = Math.max(minVal, severeRadius || 0)
+    moderateRadius = Math.max(minVal, moderateRadius || 0)
+    lightRadius = Math.max(minVal, lightRadius || 0)
 
     return {
       avgDiameter,
@@ -287,6 +375,13 @@ function App() {
       severeRadius,
       moderateRadius,
       lightRadius,
+      model: {
+        considerGravity,
+        rhoTarget,
+        g,
+        likelyAirburst,
+        fragmentationAltitude: likelyAirburst ? Math.max(0, Math.min(hFrag, 40000)) : 0,
+      },
     }
   }
 
@@ -622,7 +717,7 @@ function App() {
 
                 <div className="parameter-group">
                   <div className="parameter-label">
-                    <span>Densidade</span>
+                    <span>Densidade do Meteoro</span>
                     <span className="parameter-value">{userDensity} kg/m³</span>
                   </div>
                   <input
@@ -635,6 +730,53 @@ function App() {
                   />
                 </div>
 
+                <div className="parameter-group">
+                  <div className="parameter-label">
+                    <span>Densidade Populacional</span>
+                    <span className="parameter-value">
+                      {isCustomDensity
+                        ? `${customDensity} pessoas/km²`
+                        : `${densityTemplates[selectedDensityTemplate]} pessoas/km²`}
+                    </span>
+                  </div>
+                  <div className="density-templates">
+                    {Object.keys(densityTemplates).map((label) => (
+                      <button
+                        key={label}
+                        type="button"
+                        className={`density-btn${selectedDensityTemplate === label ? " selected" : ""}`}
+                        onClick={() => setSelectedDensityTemplate(label)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className={`density-btn${isCustomDensity ? " selected" : ""}`}
+                      onClick={() => setSelectedDensityTemplate("Customizado")}
+                    >
+                      Customizado
+                    </button>
+                  </div>
+                  {isCustomDensity && (
+                    <div className="custom-density-input">
+                      <input
+                        type="number"
+                        min={1}
+                        max={100000}
+                        step={1}
+                        value={customDensity}
+                        onChange={(e) => {
+                          const val = Number(e.target.value)
+                          if (!Number.isNaN(val) && val > 0 && val <= 100000) setCustomDensity(val)
+                        }}
+                        className="density-input"
+                        placeholder="Digite o valor (pessoas/km²)"
+                      />
+                    </div>
+                  )}
+                </div>
+
                 {selectedLocation && simulationResults && (
                   <div className="impact-zones">
                     <h4>Zonas de Impacto</h4>
@@ -643,7 +785,11 @@ function App() {
                         <span className="zone-color" style={{ background: "#ff0000" }}></span>
                         Cratera
                       </div>
-                      <span className="zone-value">{Math.round(simulationResults.craterRadius)} m</span>
+                      <span className="zone-value">
+                        {simulationResults.craterRadius > 0
+                          ? `${Math.round(simulationResults.craterRadius)} m`
+                          : "Sem cratera (explosão aérea)"}
+                      </span>
                     </div>
                     <div className="zone-item">
                       <div className="zone-label">
@@ -725,7 +871,11 @@ function App() {
               <div className="result-card">
                 <div className="result-icon">🕳️</div>
                 <div className="result-label">Raio da Cratera</div>
-                <div className="result-value">{Math.round(simulationResults.craterRadius)} m</div>
+                <div className="result-value">
+                  {simulationResults.craterRadius > 0
+                    ? `${Math.round(simulationResults.craterRadius)} m`
+                    : "Sem cratera (explosão aérea)"}
+                </div>
               </div>
             </div>
 

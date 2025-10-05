@@ -1,3 +1,56 @@
+/* Densidade Populacional Templates */
+.density-templates {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.density-btn {
+  padding: 0.7rem 1.3rem;
+  border-radius: 12px;
+  border: none;
+  font-size: 0.98rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(255,255,255,0.07);
+  color: #e0e0f0;
+  transition: all 0.3s;
+  box-shadow: 0 2px 8px rgba(102,126,234,0.08);
+  outline: none;
+}
+.density-btn.selected {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(102,126,234,0.18);
+  border: 1px solid rgba(102,126,234,0.35);
+}
+.density-btn:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.custom-density-input {
+  margin-top: 0.5rem;
+}
+.density-input {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(102,126,234,0.25);
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.3s;
+  box-shadow: 0 2px 8px rgba(102,126,234,0.08);
+}
+.density-input:focus {
+  border-color: #667eea;
+  background: rgba(102,126,234,0.08);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
+}
 * {
   margin: 0;
   padding: 0;
