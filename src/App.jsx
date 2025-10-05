@@ -154,8 +154,29 @@ function App() {
         const bodyText = await res.text()
 
         if (!res.ok) {
-          const snippet = bodyText ? ` - ${bodyText.slice(0, 500)}` : ""
-          throw new Error(`HTTP ${res.status} ${res.statusText}${snippet}`)
+          // Se a rota /api não existir no deploy (ex: Vercel sem serverless), tente a API pública da NASA como fallback
+          try {
+            const apiKey = import.meta.env.VITE_NASA_API_KEY || "XO0W1Kz2NafloPaPFMp2UebjtaOUrZVVWw2bW5Ah"
+            const nasaUrl = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${encodeURIComponent(
+              start,
+            )}&end_date=${encodeURIComponent(end)}&api_key=${apiKey}`
+            const nres = await fetch(nasaUrl)
+            const ntext = await nres.text()
+            if (!nres.ok) throw new Error(`NASA API HTTP ${nres.status} - ${ntext.slice(0, 300)}`)
+            const ndata = ntext ? JSON.parse(ntext) : {}
+            const neo = ndata.near_earth_objects || {}
+            const keys = Object.keys(neo)
+            const list = keys.flatMap((k) => neo[k])
+            setMeteors(list)
+            setCurrentStep(2)
+            setTimeout(() => {
+              meteorSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }, 100)
+            return
+          } catch (nerr) {
+            const snippet = bodyText ? ` - ${bodyText.slice(0, 500)}` : ""
+            throw new Error(`HTTP ${res.status} ${res.statusText}${snippet} (fallback failed: ${String(nerr.message).slice(0,200)})`)
+          }
         }
 
         let data
@@ -164,7 +185,8 @@ function App() {
         } catch {
           const snippet = bodyText ? bodyText.slice(0, 500) : "[vazio]"
           const lower = snippet.toLowerCase()
-          if (lower.includes("<!doctype") || lower.includes("<html")) {
+          // Caso comum local: Vite/preview serve o arquivo de função como estático (JS) — detecte e use o fallback
+          if (lower.includes("<!doctype") || lower.includes("<html") || lower.includes("export default")) {
             try {
               const apiKey = import.meta.env.VITE_NASA_API_KEY || "XO0W1Kz2NafloPaPFMp2UebjtaOUrZVVWw2bW5Ah"
               const nasaUrl = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}&api_key=${apiKey}`
