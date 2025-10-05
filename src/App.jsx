@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from "react-leaflet"
 import "./App.css"
 
-import L from "leaflet"
+import * as L from "leaflet"
 import "leaflet/dist/leaflet.css"
 
 const defaultIcon = L.icon({
@@ -60,13 +60,12 @@ function App() {
   const [selectedMeteor, setSelectedMeteor] = useState(null)
   const [selectedLocation, setSelectedLocation] = useState(null)
 
-  // user-controlled parameters for simulation
-  const [userVelocity, setUserVelocity] = useState(null) // m/s
-  const [userAngle, setUserAngle] = useState(45) // degrees
-  const [userDensity, setUserDensity] = useState(3000) // kg/m3
-  const [userAirburstThreshold, setUserAirburstThreshold] = useState(100) // meters
+  const [userVelocity, setUserVelocity] = useState(20000)
+  const [userAngle, setUserAngle] = useState(45)
+  const [userDensity, setUserDensity] = useState(3000)
 
   const [simulationResults, setSimulationResults] = useState(null)
+  const [populationData, setPopulationData] = useState(null)
 
   const meteorSectionRef = useRef(null)
   const mapSectionRef = useRef(null)
@@ -91,6 +90,16 @@ function App() {
     setUserDensity(selectedMeteor.is_potentially_hazardous_asteroid ? 3500 : 3000)
   }, [selectedMeteor])
 
+  // Clear population results when changing location or meteor; we only recompute on simulate
+  useEffect(() => {
+    if (!selectedLocation || !selectedMeteor) {
+      setPopulationData(null)
+      return
+    }
+    // Do not auto-recompute; keep last results visible until next simulation, or clear on change
+    setPopulationData(null)
+  }, [selectedLocation, selectedMeteor])
+
   function MapClickHandler({ onMapClick }) {
     useMapEvents({
       click(e) {
@@ -99,22 +108,6 @@ function App() {
     })
     return null
   }
-
-  // ensure leaflet invalidates size when the map container becomes visible
-  const leafletMapRef = useRef(null)
-  useEffect(() => {
-    // when the section with the map becomes active, try to invalidate size so tiles render correctly
-    const timer = setTimeout(() => {
-      try {
-        const map = leafletMapRef.current
-        if (map && map.invalidateSize) map.invalidateSize()
-      } catch (e) {
-        // ignore
-      }
-    }, 300)
-
-    return () => clearTimeout(timer)
-  }, [selectedMeteor])
 
   function handleMapClick(e) {
     const latlng = e?.latlng || (e && e.lat && e.lng ? { lat: e.lat, lng: e.lng } : null)
@@ -220,122 +213,61 @@ function App() {
       density: userDensity,
     })
 
-    ;(async () => {
-      // try to estimate population/density for the selected location
-      const popInfo = await getCityPopulationInfo(selectedLocation.lat, selectedLocation.lon)
+    setSimulationResults(zones)
+    setCurrentStep(5)
 
-      const areaFor = (radiusMeters) => {
-        return Math.PI * Math.pow(radiusMeters, 2) / 1e6 // km^2
+    // Compute population estimates only when starting the simulation
+    if (zones) {
+      const areaFor = (radiusMeters) => (Math.PI * Math.pow(radiusMeters, 2)) / 1e6 // km^2
+      // Default density assumption (people/km²). Could be replaced by an API-based lookup later
+      const estimatedDensity = 500
+      const estimates = {
+        crater: Math.round(estimatedDensity * areaFor(zones.craterRadius)),
+        severe: Math.round(estimatedDensity * areaFor(zones.severeRadius)),
+        moderate: Math.round(estimatedDensity * areaFor(zones.moderateRadius)),
+        light: Math.round(estimatedDensity * areaFor(zones.lightRadius)),
       }
-
-      const populationEstimates = {}
-      // Use density if available; otherwise fall back to popInfo.density (we set a fallback in getCityPopulationInfo)
-      const usedDensity = (popInfo && popInfo.density) || (popInfo && popInfo.density) || 50
-      populationEstimates.crater = Math.min(popInfo?.population || Infinity, Math.round(usedDensity * areaFor(zones.craterRadius) || 0))
-      populationEstimates.severe = Math.min(popInfo?.population || Infinity, Math.round(usedDensity * areaFor(zones.severeRadius) || 0))
-      populationEstimates.moderate = Math.min(popInfo?.population || Infinity, Math.round(usedDensity * areaFor(zones.moderateRadius) || 0))
-      populationEstimates.light = Math.min(popInfo?.population || Infinity, Math.round(usedDensity * areaFor(zones.lightRadius) || 0))
-
-      const populationConfidence = popInfo?.confidence || (popInfo?.population ? "medium" : "low")
-
-      setSimulationResults({ ...zones, populationEstimates, populationSource: popInfo, populationConfidence })
-      setCurrentStep(5)
-
-      setTimeout(() => {
-        resultsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-      }, 100)
-    })()
-
-    setTimeout(() => {
-      resultsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-    }, 100)
+      setPopulationData({
+        estimates,
+        source: "Estimativa baseada em densidade populacional média",
+        confidence: "medium",
+      })
+    }
   }
 
   function resetSimulation() {
     setSelectedMeteor(null)
     setSelectedLocation(null)
     setSimulationResults(null)
+    setPopulationData(null)
     setCurrentStep(1)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  // compute zones from selected meteor and user inputs
   function computeImpactZones(meteor, opts = {}) {
     if (!meteor) return null
     const diameterObj = meteor.estimated_diameter?.meters
     if (!diameterObj) return null
 
-    const avgDiameter = (diameterObj.estimated_diameter_min + diameterObj.estimated_diameter_max) / 2 // meters
+    const avgDiameter = (diameterObj.estimated_diameter_min + diameterObj.estimated_diameter_max) / 2
 
-    // mass: sphere volume * density
     const r = avgDiameter / 2
-    const density = opts.density || userDensity || (meteor.is_potentially_hazardous_asteroid ? 3500 : 3000)
+    const density = opts.density || userDensity || 3000
     const volume = (4 / 3) * Math.PI * Math.pow(r, 3)
-    const mass = volume * density // kg
+    const mass = volume * density
 
-    // velocity: prefer user, then approach data, then fallback 20 km/s
-    let v = opts.velocity || userVelocity
-    if (!v) {
-      const approach = meteor.close_approach_data?.[0]
-      if (approach) {
-        const vks = parseFloat(approach.relative_velocity?.kilometers_per_second)
-        if (!Number.isNaN(vks)) v = vks * 1000
-        else {
-          const vkh = parseFloat(approach.relative_velocity?.kilometers_per_hour)
-          if (!Number.isNaN(vkh)) v = (vkh * 1000) / 3600
-        }
-      }
-    }
-    if (!v) v = 20000 // m/s fallback
+    const v = opts.velocity || userVelocity || 20000
 
-    // angle: degrees, user or opts; default 45
     const angleDeg = opts.angle || userAngle || 45
     const angleRad = (angleDeg * Math.PI) / 180
 
-    // compute vertical component of velocity and use it for deposited energy (more physical)
-    const v_perp = v * Math.sin(angleRad)
-    const energyJ = 0.5 * mass * v_perp * v_perp
-    const energyMt = energyJ / 4.184e15 // megatons TNT
+    const energyJ = 0.5 * mass * v * v
+    const energyMt = energyJ / 4.184e15
 
-    // decide airburst vs ground impact using user threshold (diameter in meters)
-    const airburstThreshold = (opts.airburstThreshold || userAirburstThreshold || 100)
-    const isAirburst = avgDiameter < airburstThreshold
+    const effectiveFactor = Math.max(Math.sin(angleRad), 0.1)
+    const energyEffectiveMt = energyMt * effectiveFactor
 
-    // Zones: we branch depending on airburst vs impact
-    if (isAirburst) {
-      // Airburst: approximate blast radii (heuristic). We scale with energy^(1/3).
-      // Constants below are heuristics and should be calibrated; units are km.
-      const k_severe = 1.2 // base km for severe (high overpressure)
-      const k_moderate = 2.5 // base km for moderate
-      const k_light = 5.0 // base km for light
-
-      const base = Math.pow(Math.max(energyMt, 1e-12), 1 / 3)
-      const severeRadius = k_severe * base * 1000 // meters
-      const moderateRadius = k_moderate * base * 1000
-      const lightRadius = k_light * base * 1000
-
-      // represent craterRadius as small (airbursts usually don't make craters)
-      const craterRadius = Math.max(10, avgDiameter) // placeholder small crater equivalent
-
-      return {
-        avgDiameter,
-        mass,
-        density,
-        velocity: v,
-        angleDeg,
-        energyJ,
-        energyMt,
-        isAirburst: true,
-        craterRadius,
-        severeRadius,
-        moderateRadius,
-        lightRadius,
-      }
-    }
-
-    // Impact on ground: keep an energy->crater heuristic but improved by using vertical energy
-    // Use cubic-root scaling (heuristic). This is a simplification; ideally use pi-scaling.
-    const craterFromEnergy = 1500 * Math.pow(Math.max(energyMt, 1e-12), 1 / 3) // meters (coefficient increased)
+    const craterFromEnergy = 1000 * Math.pow(Math.max(energyEffectiveMt, 1e-12), 1 / 3)
     const craterFromSize = avgDiameter * 10
     const craterRadius = Math.max(craterFromEnergy, craterFromSize)
 
@@ -351,122 +283,10 @@ function App() {
       angleDeg,
       energyJ,
       energyMt,
-      isAirburst: false,
       craterRadius,
       severeRadius,
       moderateRadius,
       lightRadius,
-    }
-  }
-
-  function estimateImpactRadius(meteor) {
-    const zones = computeImpactZones(meteor)
-    return zones ? zones.craterRadius : 0
-  }
-
-  // ----- Population lookup helpers (client-side) -----
-  // Try to reverse geocode the lat/lon and obtain a nearby city/place, then fetch population from Wikidata when available.
-  async function reverseGeocode(lat, lon) {
-    try {
-      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=10&addressdetails=1`
-      const res = await fetch(url)
-      if (!res.ok) return null
-      const data = await res.json()
-      return data
-    } catch (e) {
-      return null
-    }
-  }
-
-  async function fetchWikidataPopulation(entityId) {
-    try {
-      const sparql = `SELECT ?population ?popDate WHERE { wd:${entityId} wdt:P1082 ?population . OPTIONAL { wd:${entityId} p:P1082 ?popStmt . ?popStmt pq:P585 ?popDate . } } ORDER BY DESC(?popDate) LIMIT 1`
-      const url = `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(sparql)}`
-      const res = await fetch(url, { headers: { Accept: "application/sparql-results+json" } })
-      if (!res.ok) return null
-      const data = await res.json()
-      const bindings = data?.results?.bindings || []
-      if (bindings.length === 0) return null
-      const pop = Number(bindings[0].population.value)
-      return isFinite(pop) ? pop : null
-    } catch (e) {
-      return null
-    }
-  }
-
-  async function getCityPopulationInfo(lat, lon) {
-    // returns { name, population, density (people per km2), source }
-    try {
-      const rev = await reverseGeocode(lat, lon)
-      if (!rev) return null
-
-      // prefer city, town, village, municipality
-      const addr = rev.address || {}
-      const place = addr.city || addr.town || addr.village || addr.municipality || addr.county || addr.state || addr.country
-
-      // if Nominatim provides a wikidata tag we can try to query for population
-      const wikidata = rev.extratags?.wikidata || rev.owner?.wikidata || rev.imported_from || null
-      if (rev.extratags?.wikidata) {
-        // format is Qxxxxx
-        const qid = rev.extratags.wikidata.replace(/^Q/, "Q")
-        const pop = await fetchWikidataPopulation(qid)
-        if (pop) {
-          // try to estimate density: if boundingbox present we can compute area
-          let density = null
-          let areaKm2 = null
-          if (rev.boundingbox) {
-            const [s, n, w, e] = rev.boundingbox.map(Number)
-            const latAvg = (s + n) / 2
-            // simple area approximation in km^2 for bbox
-            const widthKm = (Math.abs(e - w) * 111.32) * Math.cos((latAvg * Math.PI) / 180)
-            const heightKm = Math.abs(n - s) * 110.57
-            areaKm2 = Math.max(0.0001, widthKm * heightKm)
-            density = pop / areaKm2
-          }
-
-          const isUrban = Boolean(addr.city || addr.town)
-          const confidence = density ? "high" : "medium"
-          return { name: place || rev.display_name, population: pop, density: density || null, areaKm2, isUrban, source: "Wikidata (via Nominatim)", confidence }
-        }
-      }
-
-      // fallback: if display_name contains a city name, attempt to query Wikidata by label
-      if (place) {
-        // search for entity by label
-        const sparqlSearch = `SELECT ?item ?itemLabel ?population WHERE { ?item rdfs:label "${place}"@en . OPTIONAL { ?item wdt:P1082 ?population } SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } } LIMIT 5`
-        const sUrl = `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(sparqlSearch)}`
-        try {
-          const sres = await fetch(sUrl, { headers: { Accept: "application/sparql-results+json" } })
-          if (sres.ok) {
-            const sdata = await sres.json()
-            const rows = sdata?.results?.bindings || []
-            if (rows.length > 0) {
-              // pick first with population
-              for (const r of rows) {
-                if (r.population) {
-                  const pop = Number(r.population.value)
-                  if (isFinite(pop)) {
-                    const isUrban = Boolean(addr.city || addr.town)
-                    const confidence = "medium"
-                    // no bbox here, so density unknown
-                    return { name: place, population: pop, density: null, areaKm2: null, isUrban, source: "Wikidata label search", confidence }
-                  }
-                }
-              }
-            }
-          }
-        } catch (e) {
-          /* ignore */
-        }
-      }
-
-      // As a last resort, if we have a named place but no population, return a default density (urban/rural) with low confidence
-      const isUrban = Boolean(addr.city || addr.town)
-      const density = isUrban ? 1500 : 50
-      const confidence = "low"
-      return { name: place || rev.display_name, population: null, density, areaKm2: null, isUrban, source: "Nominatim fallback (assumed)", confidence }
-    } catch (e) {
-      return null
     }
   }
 
@@ -667,9 +487,6 @@ function App() {
                     zoom={selectedLocation ? 8 : 2}
                     scrollWheelZoom={true}
                     style={{ height: "100%", width: "100%" }}
-                    whenCreated={(mapInstance) => {
-                      leafletMapRef.current = mapInstance
-                    }}
                   >
                     <TileLayer
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -682,51 +499,92 @@ function App() {
                     )}
 
                     {selectedLocation &&
-                      selectedMeteor &&
-                      (() => {
-                        const zones = computeImpactZones(selectedMeteor, {
-                          velocity: userVelocity,
-                          angle: userAngle,
-                          density: userDensity,
-                        })
-                        if (!zones) return null
-                        return (
-                          <>
-                            <Circle
-                              center={[selectedLocation.lat, selectedLocation.lon]}
-                              radius={zones.craterRadius}
-                              pathOptions={{ color: "#ff0000", fillColor: "#ff0000", fillOpacity: 0.3 }}
-                            />
-                            <Circle
-                              center={[selectedLocation.lat, selectedLocation.lon]}
-                              radius={zones.severeRadius}
-                              pathOptions={{ color: "#ff6600", fillColor: "#ff6600", fillOpacity: 0.2 }}
-                            />
-                            <Circle
-                              center={[selectedLocation.lat, selectedLocation.lon]}
-                              radius={zones.moderateRadius}
-                              pathOptions={{ color: "#ffcc00", fillColor: "#ffcc00", fillOpacity: 0.15 }}
-                            />
-                            <Circle
-                              center={[selectedLocation.lat, selectedLocation.lon]}
-                              radius={zones.lightRadius}
-                              pathOptions={{ color: "#00ff00", fillColor: "#00ff00", fillOpacity: 0.1 }}
-                            />
-                          </>
-                        )
-                      })()}
+                      simulationResults && (
+                        <>
+                          <Circle
+                            center={[selectedLocation.lat, selectedLocation.lon]}
+                            radius={simulationResults.craterRadius}
+                            pathOptions={{ color: "#ff0000", fillColor: "#ff0000", fillOpacity: 0.3 }}
+                          />
+                          <Circle
+                            center={[selectedLocation.lat, selectedLocation.lon]}
+                            radius={simulationResults.severeRadius}
+                            pathOptions={{ color: "#ff6600", fillColor: "#ff6600", fillOpacity: 0.2 }}
+                          />
+                          <Circle
+                            center={[selectedLocation.lat, selectedLocation.lon]}
+                            radius={simulationResults.moderateRadius}
+                            pathOptions={{ color: "#ffcc00", fillColor: "#ffcc00", fillOpacity: 0.15 }}
+                          />
+                          <Circle
+                            center={[selectedLocation.lat, selectedLocation.lon]}
+                            radius={simulationResults.lightRadius}
+                            pathOptions={{ color: "#00ff00", fillColor: "#00ff00", fillOpacity: 0.1 }}
+                          />
+                        </>
+                      )}
                   </MapContainer>
                 </div>
 
-                <div className={`location-info ${!selectedLocation ? "location-info-empty" : ""}`}>
-                  {selectedLocation ? (
-                    <>
-                      📍 Local selecionado: {selectedLocation.lat}°, {selectedLocation.lon}°
-                    </>
-                  ) : (
-                    <>👆 Clique no mapa para selecionar o ponto de impacto</>
-                  )}
-                </div>
+                {!selectedLocation ? (
+                  <div className="location-info location-info-empty">
+                    👆 Clique no mapa para selecionar o ponto de impacto
+                  </div>
+                ) : !populationData ? (
+                  <div className="location-info">
+                    📍 Local selecionado: {selectedLocation.lat}°, {selectedLocation.lon}°
+                  </div>
+                ) : (
+                  <div className="population-display">
+                    <div className="population-header">
+                      <h4>👥 Pessoas Afetadas por Zona</h4>
+                      <div className="population-meta">
+                        <span className="population-source">{populationData.source}</span>
+                        <span className={`confidence-badge confidence-${populationData.confidence}`}>
+                          {populationData.confidence === "high"
+                            ? "Alta Confiança"
+                            : populationData.confidence === "medium"
+                              ? "Média Confiança"
+                              : "Baixa Confiança"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="population-grid">
+                      <div className="population-card crater-zone">
+                        <div className="population-card-header">
+                          <span className="zone-indicator" style={{ background: "#ff0000" }}></span>
+                          <span className="zone-name">Cratera</span>
+                        </div>
+                        <div className="population-count">{populationData.estimates.crater.toLocaleString()}</div>
+                        <div className="population-description">Destruição total</div>
+                      </div>
+                      <div className="population-card severe-zone">
+                        <div className="population-card-header">
+                          <span className="zone-indicator" style={{ background: "#ff6600" }}></span>
+                          <span className="zone-name">Severa</span>
+                        </div>
+                        <div className="population-count">{populationData.estimates.severe.toLocaleString()}</div>
+                        <div className="population-description">Danos estruturais graves</div>
+                      </div>
+                      <div className="population-card moderate-zone">
+                        <div className="population-card-header">
+                          <span className="zone-indicator" style={{ background: "#ffcc00" }}></span>
+                          <span className="zone-name">Moderada</span>
+                        </div>
+                        <div className="population-count">{populationData.estimates.moderate.toLocaleString()}</div>
+                        <div className="population-description">Danos significativos</div>
+                      </div>
+                      <div className="population-card light-zone">
+                        <div className="population-card-header">
+                          <span className="zone-indicator" style={{ background: "#00ff00" }}></span>
+                          <span className="zone-name">Leve</span>
+                        </div>
+                        <div className="population-count">{populationData.estimates.light.toLocaleString()}</div>
+                        <div className="population-description">Danos menores</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <aside className="parameters-panel">
@@ -777,61 +635,39 @@ function App() {
                   />
                 </div>
 
-                <div className="panel-row">
-                  <label>Threshold Airburst (m): <strong>{userAirburstThreshold}</strong></label>
-                  <input
-                    type="range"
-                    min={10}
-                    max={500}
-                    step={5}
-                    value={userAirburstThreshold}
-                    onChange={(e) => setUserAirburstThreshold(Number(e.target.value))}
-                  />
-                </div>
-
-                {selectedLocation &&
-                  (() => {
-                    const zones = computeImpactZones(selectedMeteor, {
-                      velocity: userVelocity,
-                      angle: userAngle,
-                      density: userDensity,
-                    })
-                    if (!zones) return null
-
-                    return (
-                      <div className="impact-zones">
-                        <h4>Zonas de Impacto</h4>
-                        <div className="zone-item">
-                          <div className="zone-label">
-                            <span className="zone-color" style={{ background: "#ff0000" }}></span>
-                            Cratera
-                          </div>
-                          <span className="zone-value">{Math.round(zones.craterRadius)} m</span>
-                        </div>
-                        <div className="zone-item">
-                          <div className="zone-label">
-                            <span className="zone-color" style={{ background: "#ff6600" }}></span>
-                            Severa
-                          </div>
-                          <span className="zone-value">{Math.round(zones.severeRadius)} m</span>
-                        </div>
-                        <div className="zone-item">
-                          <div className="zone-label">
-                            <span className="zone-color" style={{ background: "#ffcc00" }}></span>
-                            Moderada
-                          </div>
-                          <span className="zone-value">{Math.round(zones.moderateRadius)} m</span>
-                        </div>
-                        <div className="zone-item">
-                          <div className="zone-label">
-                            <span className="zone-color" style={{ background: "#00ff00" }}></span>
-                            Leve
-                          </div>
-                          <span className="zone-value">{Math.round(zones.lightRadius)} m</span>
-                        </div>
+                {selectedLocation && simulationResults && (
+                  <div className="impact-zones">
+                    <h4>Zonas de Impacto</h4>
+                    <div className="zone-item">
+                      <div className="zone-label">
+                        <span className="zone-color" style={{ background: "#ff0000" }}></span>
+                        Cratera
                       </div>
-                    )
-                  })()}
+                      <span className="zone-value">{Math.round(simulationResults.craterRadius)} m</span>
+                    </div>
+                    <div className="zone-item">
+                      <div className="zone-label">
+                        <span className="zone-color" style={{ background: "#ff6600" }}></span>
+                        Severa
+                      </div>
+                      <span className="zone-value">{Math.round(simulationResults.severeRadius)} m</span>
+                    </div>
+                    <div className="zone-item">
+                      <div className="zone-label">
+                        <span className="zone-color" style={{ background: "#ffcc00" }}></span>
+                        Moderada
+                      </div>
+                      <span className="zone-value">{Math.round(simulationResults.moderateRadius)} m</span>
+                    </div>
+                    <div className="zone-item">
+                      <div className="zone-label">
+                        <span className="zone-color" style={{ background: "#00ff00" }}></span>
+                        Leve
+                      </div>
+                      <span className="zone-value">{Math.round(simulationResults.lightRadius)} m</span>
+                    </div>
+                  </div>
+                )}
 
                 <button
                   className="btn btn-primary simulate-button"
@@ -919,32 +755,6 @@ function App() {
                 <strong>{Math.round(simulationResults.lightRadius)} metros</strong>, janelas quebrariam e haveria danos
                 menores a estruturas.
               </p>
-              {simulationResults.populationEstimates && (
-                <div style={{ marginTop: "1rem" }}>
-                  <h4>👥 Estimativa de Pessoas Afetadas</h4>
-                  <p>
-                    Fonte: <strong>{(simulationResults.populationSource && (simulationResults.populationSource.source || simulationResults.populationSource.name)) || "N/A"}</strong>
-                    {' '}
-                    <span style={{ marginLeft: 8, padding: '2px 8px', background: '#eee', color: '#222', borderRadius: 8, fontSize: 12 }}>
-                      Confiança: {(simulationResults.populationConfidence || (simulationResults.populationSource?.confidence || 'low')).toUpperCase()}
-                    </span>
-                  </p>
-                  <ul>
-                    <li>
-                      <strong>Cratera:</strong> {simulationResults.populationEstimates.crater?.toLocaleString() || "—"} pessoas
-                    </li>
-                    <li>
-                      <strong>Severa:</strong> {simulationResults.populationEstimates.severe?.toLocaleString() || "—"} pessoas
-                    </li>
-                    <li>
-                      <strong>Moderada:</strong> {simulationResults.populationEstimates.moderate?.toLocaleString() || "—"} pessoas
-                    </li>
-                    <li>
-                      <strong>Leve:</strong> {simulationResults.populationEstimates.light?.toLocaleString() || "—"} pessoas
-                    </li>
-                  </ul>
-                </div>
-              )}
             </div>
 
             <div style={{ textAlign: "center", marginTop: "2rem" }}>

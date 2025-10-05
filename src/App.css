@@ -445,7 +445,117 @@
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
-/* Map Section */
+/* Population Display */
+.population-display {
+  margin-top: 1.25rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1.75rem;
+  animation: fadeIn 0.5s ease;
+}
+
+.population-header {
+  margin-bottom: 1.5rem;
+}
+
+.population-header h4 {
+  font-size: 1.3rem;
+  color: #ffffff;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.population-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.population-source {
+  font-size: 0.85rem;
+  color: #a0a0c0;
+  font-style: italic;
+}
+
+.confidence-badge {
+  padding: 0.35rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.confidence-high {
+  background: rgba(72, 219, 251, 0.2);
+  color: #48dbfb;
+  border: 1px solid rgba(72, 219, 251, 0.4);
+}
+
+.confidence-medium {
+  background: rgba(254, 202, 87, 0.2);
+  color: #feca57;
+  border: 1px solid rgba(254, 202, 87, 0.4);
+}
+
+.confidence-low {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ff9999;
+  border: 1px solid rgba(255, 107, 107, 0.4);
+}
+
+.population-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.population-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.population-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  opacity: 0.6;
+}
+
+.population-card.crater-zone::before {
+  background: #ff0000;
+}
+
+.population-card.severe-zone::before {
+  background: #ff6600;
+}
+
+.population-card.moderate-zone::before {
+  background: #ffcc00;
+}
+
+.population-card.light-zone::before {
+  background: #00ff00;
+}
+
+.population-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Map Section (ensure Leaflet has visible height) */
 .map-layout {
   display: flex;
   gap: 2rem;
@@ -460,11 +570,12 @@
 .map-wrapper {
   position: relative;
   width: 100%;
-  height: 600px;
+  height: 600px; /* visible default height */
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.35));
 }
 
 .map-wrapper .leaflet-container {
@@ -473,21 +584,40 @@
   border-radius: 16px;
 }
 
-.location-info {
-  margin-top: 1.25rem;
-  padding: 1.25rem;
-  background: rgba(72, 219, 251, 0.1);
-  border: 1px solid rgba(72, 219, 251, 0.3);
-  border-radius: 12px;
-  text-align: center;
-  font-weight: 500;
-  color: #48dbfb;
+.population-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 
-.location-info-empty {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
+.zone-indicator {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.zone-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e0e0f0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.population-count {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  line-height: 1;
+}
+
+.population-description {
+  font-size: 0.85rem;
   color: #a0a0c0;
+  line-height: 1.4;
 }
 
 /* Parameters Panel */
@@ -548,38 +678,6 @@
 }
 
 .parameter-group input[type="range"]::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  cursor: pointer;
-  border: none;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
-}
-
-/* Ensure the threshold slider in .panel-row uses the same visual style as other parameter sliders */
-.panel-row input[type="range"] {
-  width: 100%;
-  height: 6px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.1);
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-.panel-row input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
-}
-
-.panel-row input[type="range"]::-moz-range-thumb {
   width: 20px;
   height: 20px;
   border-radius: 50%;
@@ -784,6 +882,10 @@
   .parameters-panel {
     width: 100%;
   }
+
+  .population-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
@@ -842,5 +944,13 @@
 
   .results-grid {
     grid-template-columns: 1fr;
+  }
+
+  .population-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .population-display {
+    padding: 1.25rem;
   }
 }
