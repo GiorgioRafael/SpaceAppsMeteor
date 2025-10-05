@@ -220,8 +220,31 @@ function App() {
       density: userDensity,
     })
 
-    setSimulationResults(zones)
-    setCurrentStep(5)
+    ;(async () => {
+      // try to estimate population/density for the selected location
+      const popInfo = await getCityPopulationInfo(selectedLocation.lat, selectedLocation.lon)
+
+      const areaFor = (radiusMeters) => {
+        return Math.PI * Math.pow(radiusMeters, 2) / 1e6 // km^2
+      }
+
+      const populationEstimates = {}
+      // Use density if available; otherwise fall back to popInfo.density (we set a fallback in getCityPopulationInfo)
+      const usedDensity = (popInfo && popInfo.density) || (popInfo && popInfo.density) || 50
+      populationEstimates.crater = Math.min(popInfo?.population || Infinity, Math.round(usedDensity * areaFor(zones.craterRadius) || 0))
+      populationEstimates.severe = Math.min(popInfo?.population || Infinity, Math.round(usedDensity * areaFor(zones.severeRadius) || 0))
+      populationEstimates.moderate = Math.min(popInfo?.population || Infinity, Math.round(usedDensity * areaFor(zones.moderateRadius) || 0))
+      populationEstimates.light = Math.min(popInfo?.population || Infinity, Math.round(usedDensity * areaFor(zones.lightRadius) || 0))
+
+      const populationConfidence = popInfo?.confidence || (popInfo?.population ? "medium" : "low")
+
+      setSimulationResults({ ...zones, populationEstimates, populationSource: popInfo, populationConfidence })
+      setCurrentStep(5)
+
+      setTimeout(() => {
+        resultsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+      }, 100)
+    })()
 
     setTimeout(() => {
       resultsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
@@ -339,6 +362,112 @@ function App() {
   function estimateImpactRadius(meteor) {
     const zones = computeImpactZones(meteor)
     return zones ? zones.craterRadius : 0
+  }
+
+  // ----- Population lookup helpers (client-side) -----
+  // Try to reverse geocode the lat/lon and obtain a nearby city/place, then fetch population from Wikidata when available.
+  async function reverseGeocode(lat, lon) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=10&addressdetails=1`
+      const res = await fetch(url)
+      if (!res.ok) return null
+      const data = await res.json()
+      return data
+    } catch (e) {
+      return null
+    }
+  }
+
+  async function fetchWikidataPopulation(entityId) {
+    try {
+      const sparql = `SELECT ?population ?popDate WHERE { wd:${entityId} wdt:P1082 ?population . OPTIONAL { wd:${entityId} p:P1082 ?popStmt . ?popStmt pq:P585 ?popDate . } } ORDER BY DESC(?popDate) LIMIT 1`
+      const url = `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(sparql)}`
+      const res = await fetch(url, { headers: { Accept: "application/sparql-results+json" } })
+      if (!res.ok) return null
+      const data = await res.json()
+      const bindings = data?.results?.bindings || []
+      if (bindings.length === 0) return null
+      const pop = Number(bindings[0].population.value)
+      return isFinite(pop) ? pop : null
+    } catch (e) {
+      return null
+    }
+  }
+
+  async function getCityPopulationInfo(lat, lon) {
+    // returns { name, population, density (people per km2), source }
+    try {
+      const rev = await reverseGeocode(lat, lon)
+      if (!rev) return null
+
+      // prefer city, town, village, municipality
+      const addr = rev.address || {}
+      const place = addr.city || addr.town || addr.village || addr.municipality || addr.county || addr.state || addr.country
+
+      // if Nominatim provides a wikidata tag we can try to query for population
+      const wikidata = rev.extratags?.wikidata || rev.owner?.wikidata || rev.imported_from || null
+      if (rev.extratags?.wikidata) {
+        // format is Qxxxxx
+        const qid = rev.extratags.wikidata.replace(/^Q/, "Q")
+        const pop = await fetchWikidataPopulation(qid)
+        if (pop) {
+          // try to estimate density: if boundingbox present we can compute area
+          let density = null
+          let areaKm2 = null
+          if (rev.boundingbox) {
+            const [s, n, w, e] = rev.boundingbox.map(Number)
+            const latAvg = (s + n) / 2
+            // simple area approximation in km^2 for bbox
+            const widthKm = (Math.abs(e - w) * 111.32) * Math.cos((latAvg * Math.PI) / 180)
+            const heightKm = Math.abs(n - s) * 110.57
+            areaKm2 = Math.max(0.0001, widthKm * heightKm)
+            density = pop / areaKm2
+          }
+
+          const isUrban = Boolean(addr.city || addr.town)
+          const confidence = density ? "high" : "medium"
+          return { name: place || rev.display_name, population: pop, density: density || null, areaKm2, isUrban, source: "Wikidata (via Nominatim)", confidence }
+        }
+      }
+
+      // fallback: if display_name contains a city name, attempt to query Wikidata by label
+      if (place) {
+        // search for entity by label
+        const sparqlSearch = `SELECT ?item ?itemLabel ?population WHERE { ?item rdfs:label "${place}"@en . OPTIONAL { ?item wdt:P1082 ?population } SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } } LIMIT 5`
+        const sUrl = `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(sparqlSearch)}`
+        try {
+          const sres = await fetch(sUrl, { headers: { Accept: "application/sparql-results+json" } })
+          if (sres.ok) {
+            const sdata = await sres.json()
+            const rows = sdata?.results?.bindings || []
+            if (rows.length > 0) {
+              // pick first with population
+              for (const r of rows) {
+                if (r.population) {
+                  const pop = Number(r.population.value)
+                  if (isFinite(pop)) {
+                    const isUrban = Boolean(addr.city || addr.town)
+                    const confidence = "medium"
+                    // no bbox here, so density unknown
+                    return { name: place, population: pop, density: null, areaKm2: null, isUrban, source: "Wikidata label search", confidence }
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {
+          /* ignore */
+        }
+      }
+
+      // As a last resort, if we have a named place but no population, return a default density (urban/rural) with low confidence
+      const isUrban = Boolean(addr.city || addr.town)
+      const density = isUrban ? 1500 : 50
+      const confidence = "low"
+      return { name: place || rev.display_name, population: null, density, areaKm2: null, isUrban, source: "Nominatim fallback (assumed)", confidence }
+    } catch (e) {
+      return null
+    }
   }
 
   const filteredMeteors = hazardousOnly ? meteors.filter((m) => m.is_potentially_hazardous_asteroid) : meteors
@@ -790,6 +919,32 @@ function App() {
                 <strong>{Math.round(simulationResults.lightRadius)} metros</strong>, janelas quebrariam e haveria danos
                 menores a estruturas.
               </p>
+              {simulationResults.populationEstimates && (
+                <div style={{ marginTop: "1rem" }}>
+                  <h4>👥 Estimativa de Pessoas Afetadas</h4>
+                  <p>
+                    Fonte: <strong>{(simulationResults.populationSource && (simulationResults.populationSource.source || simulationResults.populationSource.name)) || "N/A"}</strong>
+                    {' '}
+                    <span style={{ marginLeft: 8, padding: '2px 8px', background: '#eee', color: '#222', borderRadius: 8, fontSize: 12 }}>
+                      Confiança: {(simulationResults.populationConfidence || (simulationResults.populationSource?.confidence || 'low')).toUpperCase()}
+                    </span>
+                  </p>
+                  <ul>
+                    <li>
+                      <strong>Cratera:</strong> {simulationResults.populationEstimates.crater?.toLocaleString() || "—"} pessoas
+                    </li>
+                    <li>
+                      <strong>Severa:</strong> {simulationResults.populationEstimates.severe?.toLocaleString() || "—"} pessoas
+                    </li>
+                    <li>
+                      <strong>Moderada:</strong> {simulationResults.populationEstimates.moderate?.toLocaleString() || "—"} pessoas
+                    </li>
+                    <li>
+                      <strong>Leve:</strong> {simulationResults.populationEstimates.light?.toLocaleString() || "—"} pessoas
+                    </li>
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div style={{ textAlign: "center", marginTop: "2rem" }}>
