@@ -4,21 +4,26 @@ import { useState, useEffect, useRef } from "react"
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from "react-leaflet"
 import "./App.css"
 
-// react-leaflet + leaflet for interactive map
-
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png"
-import markerIcon from "leaflet/dist/images/marker-icon.png"
-import markerShadow from "leaflet/dist/images/marker-shadow.png"
 
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
+const defaultIcon = L.icon({
+  iconUrl:
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAApCAYAAADAk4LOAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAOzSURBVFiFtZhLaBxVGIW/e2dSSTQxCZo0aqzRRDAaFRVEQRBBBEGhUBFEEBcuXLhw5UpwIYILFy5cuHDhQhAXIohQEBEUH4iKj0SNj5jEJE2TZJLMTGbmXhczSWrSZDLTmT/c1b3n3PO/c+65/z0wYjQajWnADmAncBfQDEwCJgAXgQvAGeAE8BXwcblcPjVqkEajMQV4HHgU2A7MBq4BfUAXcBnwgElAE9AKzAXuBu4BtgCfAB+Uy+WuoYI0Go1pwMvAi8Ak4BfgQ+Bb4GS5XO4ZwmcjsAl4AHgKmA98BLxWLpf/GhCk0WhMAV4BXgKuAe8D75TL5fOjCQ4gIjOBZ4HngRbgXeClcrl8pV+QRqMxHXgDeAb4E3i5XC5/M5aAg4jIXOBN4EngXeD5crl8qV+QRqMxA/gYuB94pVwuvzfegP0RkXnAJ8BG4IlyufxNvyDtwCfASeChcrl8YbxB+iMiC4AvgT+AreVy+Wy/IIuBH4Hd5XL5q3GH+x8RWQocAnaXy+Wv+wW5G/gO2FEul38Yd7j/EZHlwPfAznK5fKRfkM3AYWBruVw+Oe5w/yMiK4EjwJZyuXy8X5D1wGFgXblcPjXucP8jIquBw8C6crn8S78grcBRYHW5XD4z7nD/IyJrgKPAqnK5fLZfkOnAcWBFuVzuHHe4/xGRdcBxYHm5XD7XL8hE4BdgSblc/nPc4f5HRDYAvwJLy+Xy+X5BPPALsLhcLv8+7nD/IyKbgF+AxeVy+UK/IB5wDFhYLpf/GHe4/xGRzcAxYEG5XL7YL4gHHAXml8vlv8cd7n9EZCtwFFhQLpf/7hfEAw4Dc8vl8j/jDvc/IrIdOATMLZfLl/oF8YADwJxyuXx13OH+R0R2AAeB2eVy+XK/IB7wOTCrXC5fHXe4/xGRncDnwMxyudzVL4gHfAbMLJfL18Yd7n9EZBfwKTCjXC539wviAZ8AM8rlcs+4w/2PiOwGPgaml8vlnn5BPOAjYFq5XO4dd7j/EZE9wIfA1HK53NcviAd8AEwpl8vXxx3uf0RkL/A+MLlcLvf1C+IB7wGTy+Vy/7jD/Y+I7APeASaVy+Ub/YJ4wNvApHK5fHPc4f5HRPYDbwGN5XL51oAgHvAmMKFcLt8ed7j/EZEDwOtAQ7lcvjMgiAe8BtTL5fKdcYf7HxE5CLwK1Mvl8t0BQTzgFaBWLpfvjTvc/4jIIeBlYEK5XP4XOQ3Ycmvt5UYAAAAASUVORK5CYII=",
+  shadowUrl:
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACkAAAApCAQAAAACach9AAACMUlEQVR4Ae3ShY7jQBAE0Aoz/f9/HTMzhg1zrdKUrJbdx+Kd2nD8VNudfsL/Th///dyQN2TH6f3y/BGpC379rV+S+qqetBOxImNQXL8JCAr2V4iMQXHGNJxeCfZXhSRBcQMfvkOWUdtfzlLgAENmZDcmo2TVmt8OSM2eXxBp3DjHSMFutqS7SbmemzBiR+xpKCNUIRkdkkYxhAkyGoBvyQFEJEefwSmmvBfJuJ6aKqKWnAkvGZOaZXTUgFqYULWNSHUckZuR1HIIimUExutRxwzOLROIG4vKmCKQt364mIlhSyzAf1m9lHZHJZrlAOMMztRRiKimp/rpdJDc9Awry5xTZCte7FHtuS8wJgeYGrex28xNTd086Dik7vUMscQOa8y4DoGtCCSkAKlNwpgNtphjrC6MIHUkR6YWxxs6Sc5xqn222mmCRFzIt8lEdKx+ikCtg91qS2WpwVfBelJCiQJwvzixfI9cxZQWgiSJelKnwBElKYtDOb2MFbhmUigbReQBV0Cg4+qMXSxXSyGUn4UbF8l+7qdSGnTC0XLCmahIgUHLhLOhpVCtw4CzYXvLQWQbJNmxoCsOKAxSgBJno75avolkRw8iIAFcsdc02e9iyCd8tHwmeSSoKTowIgvscSGZUOA7PuCN5b2BX9mQM7S0wYhMNU74zgsPBj3HU7wguAfnxxjFQGBE6pwN+GjME9zHY7zGp8wVxMShYX9NXvEWD3HbwJf4giO4CFIQxXScH1/TM+04kkBiAAAAAElFTkSuQmCC",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
 })
 
-// prettier, SVG-based image icon for the selected location (data URL)
+L.Icon.Default.mergeOptions({
+  iconUrl: defaultIcon.options.iconUrl,
+  iconRetinaUrl: defaultIcon.options.iconRetinaUrl,
+  shadowUrl: defaultIcon.options.shadowUrl,
+})
+
 const asteroidSvg = `
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
   <g>
@@ -32,114 +37,91 @@ const asteroidSvg = `
 
 const asteroidIcon = L.icon({
   iconUrl: `data:image/svg+xml;utf8,${encodeURIComponent(asteroidSvg)}`,
-  iconSize: [32, 32], // size of the icon image in px
-  iconAnchor: [18, 18], // point of the icon which will correspond to marker's location
-  popupAnchor: [0, -18],
-  className: 'asteroid-icon',
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -32],
 })
 
 function buildApiUrl(startDate, endDate) {
   return `/api/nasa/meteors?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`
 }
 
-// This app now only fetches and lists meteors; simulation logic was removed
-
 function App() {
+  const [currentStep, setCurrentStep] = useState(1)
   const [meteors, setMeteors] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  // simulation-related state removed
 
   const today = new Date().toISOString().slice(0, 10)
   const [startDate, setStartDate] = useState(today)
   const [endDate, setEndDate] = useState(today)
   const [hazardousOnly, setHazardousOnly] = useState(false)
 
-  // small state to keep map instance if needed
-  const [mapInstance, setMapInstance] = useState(null)
-
-  // NEW: selected map location, meteor selection and modal for simulation
-  const [selectedLocation, setSelectedLocation] = useState(null) // { lat, lon }
   const [selectedMeteor, setSelectedMeteor] = useState(null)
-  const [showSimModal, setShowSimModal] = useState(false)
-  const [simMessage, setSimMessage] = useState(null)
-  const meteorListRef = useRef(null)
+  const [selectedLocation, setSelectedLocation] = useState(null)
 
   // user-controlled parameters for simulation
   const [userVelocity, setUserVelocity] = useState(null) // m/s
   const [userAngle, setUserAngle] = useState(45) // degrees
   const [userDensity, setUserDensity] = useState(3000) // kg/m3
+  const [userAirburstThreshold, setUserAirburstThreshold] = useState(100) // meters
 
-  useEffect(() => {
-    fetchForRange(startDate, endDate)
-  }, [])
+  const [simulationResults, setSimulationResults] = useState(null)
 
-  // when selectedMeteor changes, seed sliders with sensible defaults from data
+  const meteorSectionRef = useRef(null)
+  const mapSectionRef = useRef(null)
+  const resultsSectionRef = useRef(null)
+
   useEffect(() => {
     if (!selectedMeteor) return
     const approach = selectedMeteor.close_approach_data?.[0]
     if (approach) {
-      const vks = parseFloat(approach.relative_velocity?.kilometers_per_second)
+      const vks = Number.parseFloat(approach.relative_velocity?.kilometers_per_second)
       if (!Number.isNaN(vks)) {
-        setUserVelocity(vks * 1000) // m/s
+        setUserVelocity(vks * 1000)
       } else {
-        const vkh = parseFloat(approach.relative_velocity?.kilometers_per_hour)
+        const vkh = Number.parseFloat(approach.relative_velocity?.kilometers_per_hour)
         if (!Number.isNaN(vkh)) setUserVelocity((vkh * 1000) / 3600)
       }
     } else {
-      // default 20 km/s
       setUserVelocity(20000)
     }
 
-    // default angle 45
     setUserAngle(45)
-
-    // default density guess
     setUserDensity(selectedMeteor.is_potentially_hazardous_asteroid ? 3500 : 3000)
   }, [selectedMeteor])
 
-  // Map click handler component using react-leaflet hook
   function MapClickHandler({ onMapClick }) {
     useMapEvents({
       click(e) {
         onMapClick && onMapClick(e)
-      }
+      },
     })
     return null
   }
 
-  // NEW: when user clicks the map, store the lat/lon (no automatic scroll)
+  // ensure leaflet invalidates size when the map container becomes visible
+  const leafletMapRef = useRef(null)
+  useEffect(() => {
+    // when the section with the map becomes active, try to invalidate size so tiles render correctly
+    const timer = setTimeout(() => {
+      try {
+        const map = leafletMapRef.current
+        if (map && map.invalidateSize) map.invalidateSize()
+      } catch (e) {
+        // ignore
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [selectedMeteor])
+
   function handleMapClick(e) {
-    // e might be a Leaflet event or a synthetic one; ensure latlng exists
     const latlng = e?.latlng || (e && e.lat && e.lng ? { lat: e.lat, lng: e.lng } : null)
     if (!latlng) return
     const { lat, lng } = latlng
     setSelectedLocation({ lat: Number(lat.toFixed(6)), lon: Number(lng.toFixed(6)) })
-    // removed automatic scroll per user request
-  }
-
-  // NEW: user clicked a meteor card to start a simulation with selectedLocation
-  function handleSelectMeteorForSimulation(meteor) {
-    setSelectedMeteor(meteor)
-    setShowSimModal(true)
-  }
-
-  function startSimulation() {
-    if (!selectedMeteor) return
-    // Placeholder simulation start - replace with your real simulation logic
-    const msg = `Simulação iniciada para ${selectedMeteor.name} em (${selectedLocation ? `${selectedLocation.lat}, ${selectedLocation.lon}` : "local não selecionado"})`
-    setSimMessage(msg)
-    // close modal after starting
-    setTimeout(() => {
-      setShowSimModal(false)
-    }, 600)
-    console.log(msg)
-  }
-
-  function closeModal() {
-    setShowSimModal(false)
-    setSelectedMeteor(null)
-    setSimMessage(null)
+    setCurrentStep(4)
   }
 
   function fetchForRange(start, end) {
@@ -152,17 +134,22 @@ function App() {
       setError("A data inicial deve ser anterior ou igual à data final")
       return
     }
+
+    const daysDiff = Math.ceil((new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24))
+    if (daysDiff > 7) {
+      setError("O período máximo é de 7 dias")
+      return
+    }
+
     const url = buildApiUrl(start, end)
     setLoading(true)
-
     ;(async () => {
       try {
         const res = await fetch(url)
         const bodyText = await res.text()
 
         if (!res.ok) {
-          // include part of the error to help debugging (e.g., HTML error page)
-          const snippet = bodyText ? ` - ${bodyText.slice(0, 500)}` : ''
+          const snippet = bodyText ? ` - ${bodyText.slice(0, 500)}` : ""
           throw new Error(`HTTP ${res.status} ${res.statusText}${snippet}`)
         }
 
@@ -170,14 +157,11 @@ function App() {
         try {
           data = bodyText ? JSON.parse(bodyText) : {}
         } catch (parseErr) {
-          // Provide helpful message instead of throwing raw JSON.parse error
-          const snippet = bodyText ? bodyText.slice(0, 500) : '[vazio]'
-          // If the server returned the SPA index (HTML), try fetching the public NASA API directly as a fallback
+          const snippet = bodyText ? bodyText.slice(0, 500) : "[vazio]"
           const lower = snippet.toLowerCase()
-          if (lower.includes('<!doctype') || lower.includes('<html')) {
-            // attempt direct NASA fetch as fallback
+          if (lower.includes("<!doctype") || lower.includes("<html")) {
             try {
-              const apiKey = import.meta.env.VITE_NASA_API_KEY || 'XO0W1Kz2NafloPaPFMp2UebjtaOUrZVVWw2bW5Ah'
+              const apiKey = import.meta.env.VITE_NASA_API_KEY || "XO0W1Kz2NafloPaPFMp2UebjtaOUrZVVWw2bW5Ah"
               const nasaUrl = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}&api_key=${apiKey}`
               const nres = await fetch(nasaUrl)
               const ntext = await nres.text()
@@ -187,6 +171,10 @@ function App() {
               const keys = Object.keys(neo)
               const list = keys.flatMap((k) => neo[k])
               setMeteors(list)
+              setCurrentStep(2)
+              setTimeout(() => {
+                meteorSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }, 100)
               return
             } catch (nerr) {
               const nsnippet = String(nerr.message).slice(0, 500)
@@ -200,8 +188,13 @@ function App() {
         const keys = Object.keys(neo)
         const list = keys.flatMap((k) => neo[k])
         setMeteors(list)
+
+        setCurrentStep(2)
+        setTimeout(() => {
+          meteorSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+        }, 100)
       } catch (err) {
-        console.error('Erro ao buscar meteoros:', err)
+        console.error("Erro ao buscar meteoros:", err)
         setError(err.message)
         setMeteors([])
       } finally {
@@ -210,7 +203,38 @@ function App() {
     })()
   }
 
-  const filteredMeteors = hazardousOnly ? meteors.filter((m) => m.is_potentially_hazardous_asteroid) : meteors
+  function handleSelectMeteor(meteor) {
+    setSelectedMeteor(meteor)
+    setCurrentStep(3)
+    setTimeout(() => {
+      mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 100)
+  }
+
+  function startSimulation() {
+    if (!selectedMeteor || !selectedLocation) return
+
+    const zones = computeImpactZones(selectedMeteor, {
+      velocity: userVelocity,
+      angle: userAngle,
+      density: userDensity,
+    })
+
+    setSimulationResults(zones)
+    setCurrentStep(5)
+
+    setTimeout(() => {
+      resultsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 100)
+  }
+
+  function resetSimulation() {
+    setSelectedMeteor(null)
+    setSelectedLocation(null)
+    setSimulationResults(null)
+    setCurrentStep(1)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
 
   // compute zones from selected meteor and user inputs
   function computeImpactZones(meteor, opts = {}) {
@@ -245,16 +269,50 @@ function App() {
     const angleDeg = opts.angle || userAngle || 45
     const angleRad = (angleDeg * Math.PI) / 180
 
-    // energy (J)
-    const energyJ = 0.5 * mass * v * v
+    // compute vertical component of velocity and use it for deposited energy (more physical)
+    const v_perp = v * Math.sin(angleRad)
+    const energyJ = 0.5 * mass * v_perp * v_perp
     const energyMt = energyJ / 4.184e15 // megatons TNT
 
-    // adjust energy by angle (vertical component) to approximate deposition
-    const effectiveFactor = Math.max(Math.sin(angleRad), 0.1)
-    const energyEffectiveMt = energyMt * effectiveFactor
+    // decide airburst vs ground impact using user threshold (diameter in meters)
+    const airburstThreshold = (opts.airburstThreshold || userAirburstThreshold || 100)
+    const isAirburst = avgDiameter < airburstThreshold
 
-    // crater estimation: heuristic using cubic-root scaling with energy
-    const craterFromEnergy = 1000 * Math.pow(Math.max(energyEffectiveMt, 1e-12), 1 / 3) // meters
+    // Zones: we branch depending on airburst vs impact
+    if (isAirburst) {
+      // Airburst: approximate blast radii (heuristic). We scale with energy^(1/3).
+      // Constants below are heuristics and should be calibrated; units are km.
+      const k_severe = 1.2 // base km for severe (high overpressure)
+      const k_moderate = 2.5 // base km for moderate
+      const k_light = 5.0 // base km for light
+
+      const base = Math.pow(Math.max(energyMt, 1e-12), 1 / 3)
+      const severeRadius = k_severe * base * 1000 // meters
+      const moderateRadius = k_moderate * base * 1000
+      const lightRadius = k_light * base * 1000
+
+      // represent craterRadius as small (airbursts usually don't make craters)
+      const craterRadius = Math.max(10, avgDiameter) // placeholder small crater equivalent
+
+      return {
+        avgDiameter,
+        mass,
+        density,
+        velocity: v,
+        angleDeg,
+        energyJ,
+        energyMt,
+        isAirburst: true,
+        craterRadius,
+        severeRadius,
+        moderateRadius,
+        lightRadius,
+      }
+    }
+
+    // Impact on ground: keep an energy->crater heuristic but improved by using vertical energy
+    // Use cubic-root scaling (heuristic). This is a simplification; ideally use pi-scaling.
+    const craterFromEnergy = 1500 * Math.pow(Math.max(energyMt, 1e-12), 1 / 3) // meters (coefficient increased)
     const craterFromSize = avgDiameter * 10
     const craterRadius = Math.max(craterFromEnergy, craterFromSize)
 
@@ -270,6 +328,7 @@ function App() {
       angleDeg,
       energyJ,
       energyMt,
+      isAirburst: false,
       craterRadius,
       severeRadius,
       moderateRadius,
@@ -282,127 +341,288 @@ function App() {
     return zones ? zones.craterRadius : 0
   }
 
+  const filteredMeteors = hazardousOnly ? meteors.filter((m) => m.is_potentially_hazardous_asteroid) : meteors
+
   return (
     <div className="app">
       <header className="app-header">
         <div className="header-content">
-          <h1>🌍 Simulador de Impacto de Meteoro</h1>
-          <p className="subtitle">Escolha um meteoro da base de dados da NASA e veja o impacto na Terra</p>
+          <h1>🌍 Simulador de Impacto de Asteroide</h1>
+          <p className="subtitle">Simule o impacto de asteroides reais da NASA na Terra</p>
         </div>
       </header>
 
       <main className="main-content">
-        <section className="controls">
+        <div className="step-indicator">
+          <div className={`step-item ${currentStep >= 1 ? "active" : ""} ${currentStep > 1 ? "completed" : ""}`}>
+            <div className="step-number">1</div>
+            <div className="step-label">Buscar Meteoros</div>
+          </div>
+          <div className="step-arrow">→</div>
+          <div className={`step-item ${currentStep >= 2 ? "active" : ""} ${currentStep > 2 ? "completed" : ""}`}>
+            <div className="step-number">2</div>
+            <div className="step-label">Escolher Meteoro</div>
+          </div>
+          <div className="step-arrow">→</div>
+          <div className={`step-item ${currentStep >= 3 ? "active" : ""} ${currentStep > 3 ? "completed" : ""}`}>
+            <div className="step-number">3</div>
+            <div className="step-label">Selecionar Local</div>
+          </div>
+          <div className="step-arrow">→</div>
+          <div className={`step-item ${currentStep >= 4 ? "active" : ""} ${currentStep > 4 ? "completed" : ""}`}>
+            <div className="step-number">4</div>
+            <div className="step-label">Ajustar Parâmetros</div>
+          </div>
+          <div className="step-arrow">→</div>
+          <div className={`step-item ${currentStep >= 5 ? "active" : ""}`}>
+            <div className="step-number">5</div>
+            <div className="step-label">Ver Resultados</div>
+          </div>
+        </div>
+
+        <section className="section">
+          <div className="section-header">
+            <div className="section-number">1</div>
+            <div className="section-title">
+              <h2>Buscar Meteoros</h2>
+              <p>Selecione um período de até 7 dias para buscar asteroides próximos à Terra</p>
+            </div>
+          </div>
+
           <form
+            className="date-form"
             onSubmit={(e) => {
               e.preventDefault()
               fetchForRange(startDate, endDate)
             }}
           >
             <div className="date-inputs">
-              <label>
-                Data inicial
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              </label>
-              <label>
-                Data final
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-              </label>
+              <div className="date-input-group">
+                <label>Data Inicial</label>
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+              </div>
+              <div className="date-input-group">
+                <label>Data Final</label>
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+              </div>
             </div>
-            <label className="checkbox-inline">
-              <input type="checkbox" checked={hazardousOnly} onChange={(e) => setHazardousOnly(e.target.checked)} />{' '}
-              Apenas perigosos
-            </label>
-            <button type="submit" className="btn btn-primary">
-              🔍 Buscar Meteoros
+
+            <div className="filter-options">
+              <input
+                type="checkbox"
+                id="hazardous-filter"
+                checked={hazardousOnly}
+                onChange={(e) => setHazardousOnly(e.target.checked)}
+              />
+              <label htmlFor="hazardous-filter">Mostrar apenas asteroides perigosos</label>
+            </div>
+
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? "🔄 Buscando..." : "🔍 Buscar Meteoros"}
             </button>
           </form>
+
+          {error && <div className="error-message">❌ {error}</div>}
         </section>
 
-        {loading && (
-          <div className="loading-container">
-            <div className="spinner"></div>
-            <p>Carregando meteoros da NASA...</p>
-          </div>
+        {meteors.length > 0 && (
+          <section ref={meteorSectionRef} className="section">
+            <div className="section-header">
+              <div className="section-number">2</div>
+              <div className="section-title">
+                <h2>Escolher Meteoro</h2>
+                <p>
+                  Encontramos {filteredMeteors.length} asteroide{filteredMeteors.length !== 1 ? "s" : ""} no período
+                  selecionado
+                </p>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="loading-container">
+                <div className="spinner"></div>
+                <p>Carregando meteoros da NASA...</p>
+              </div>
+            ) : (
+              <div className="meteor-grid">
+                {filteredMeteors.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "2rem", color: "#a0a0c0" }}>
+                    Nenhum meteoro corresponde ao filtro aplicado.
+                  </div>
+                ) : (
+                  filteredMeteors.map((meteor) => {
+                    const diameter = meteor.estimated_diameter
+                    const avgDiameter = diameter
+                      ? ((diameter.meters.estimated_diameter_min + diameter.meters.estimated_diameter_max) / 2).toFixed(
+                          2,
+                        )
+                      : "—"
+                    const approach = meteor.close_approach_data?.[0]
+
+                    return (
+                      <div
+                        key={meteor.id}
+                        className={`meteor-card ${meteor.is_potentially_hazardous_asteroid ? "hazardous" : ""}`}
+                      >
+                        <div className="meteor-card-header">
+                          <h3>{meteor.name}</h3>
+                          {meteor.is_potentially_hazardous_asteroid && <span className="hazard-badge">⚠️ PERIGOSO</span>}
+                        </div>
+                        <div className="meteor-card-body">
+                          <div className="meteor-stat">
+                            <span className="stat-label">Diâmetro médio</span>
+                            <span className="stat-value">{avgDiameter} m</span>
+                          </div>
+                          <div className="meteor-stat">
+                            <span className="stat-label">Magnitude</span>
+                            <span className="stat-value">{meteor.absolute_magnitude_h}</span>
+                          </div>
+                          {approach && (
+                            <div className="meteor-stat">
+                              <span className="stat-label">Velocidade</span>
+                              <span className="stat-value">
+                                {Number.parseFloat(approach.relative_velocity.kilometers_per_hour).toLocaleString()}{" "}
+                                km/h
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="meteor-card-footer">
+                          <button className="btn btn-select" onClick={() => handleSelectMeteor(meteor)}>
+                            Selecionar este meteoro →
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            )}
+          </section>
         )}
 
-        {error && <div className="error-message">❌ {error}</div>}
+        {selectedMeteor && (
+          <section ref={mapSectionRef} className="section">
+            <div className="section-header">
+              <div className="section-number">3</div>
+              <div className="section-title">
+                <h2>Selecionar Local e Ajustar Parâmetros</h2>
+                <p>Clique no mapa para escolher o ponto de impacto e ajuste os parâmetros da simulação</p>
+              </div>
+            </div>
 
-        {/* Map: square cropped container above the list */}
-        {!loading && !error && meteors.length > 0 && (
-          <section className="map-section">
-            <div className="map-row">
-              <div className="map-crop">
-                <div className="map-square">
-                  <div className="map-inner">
-                    <MapContainer
-                      center={[0, 0]}
-                      zoom={2}
-                      scrollWheelZoom={true}
-                      style={{ height: "100%", width: "100%" }}
-                      whenCreated={(map) => setMapInstance(map)}
-                    >
-                      <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      />
-                      <MapClickHandler onMapClick={handleMapClick} />
+            <div className="selected-meteor-banner">
+              <div className="selected-meteor-info">
+                <h4>🌠 {selectedMeteor.name}</h4>
+                <p>
+                  {selectedMeteor.is_potentially_hazardous_asteroid ? "⚠️ Asteroide Perigoso" : "Asteroide Não Perigoso"}{" "}
+                  • Diâmetro:{" "}
+                  {(
+                    (selectedMeteor.estimated_diameter.meters.estimated_diameter_min +
+                      selectedMeteor.estimated_diameter.meters.estimated_diameter_max) /
+                    2
+                  ).toFixed(2)}{" "}
+                  m
+                </p>
+              </div>
+              <button className="btn btn-secondary" onClick={resetSimulation}>
+                ← Escolher outro meteoro
+              </button>
+            </div>
 
-                      {/* show a temporary marker where the user clicked to confirm selection */}
-                      {selectedLocation && (
-                        <Marker position={[selectedLocation.lat, selectedLocation.lon]} icon={asteroidIcon} />
-                      )}
+            <div className="map-layout">
+              <div className="map-container">
+                <div className="map-wrapper">
+                  <MapContainer
+                    center={selectedLocation ? [selectedLocation.lat, selectedLocation.lon] : [0, 0]}
+                    zoom={selectedLocation ? 8 : 2}
+                    scrollWheelZoom={true}
+                    style={{ height: "100%", width: "100%" }}
+                    whenCreated={(mapInstance) => {
+                      leafletMapRef.current = mapInstance
+                    }}
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <MapClickHandler onMapClick={handleMapClick} />
 
-                      {selectedLocation && selectedMeteor && (() => {
-                        const zones = computeImpactZones(selectedMeteor, { velocity: userVelocity, angle: userAngle, density: userDensity })
+                    {selectedLocation && (
+                      <Marker position={[selectedLocation.lat, selectedLocation.lon]} icon={asteroidIcon} />
+                    )}
+
+                    {selectedLocation &&
+                      selectedMeteor &&
+                      (() => {
+                        const zones = computeImpactZones(selectedMeteor, {
+                          velocity: userVelocity,
+                          angle: userAngle,
+                          density: userDensity,
+                        })
                         if (!zones) return null
                         return (
                           <>
                             <Circle
                               center={[selectedLocation.lat, selectedLocation.lon]}
                               radius={zones.craterRadius}
-                              pathOptions={{ color: 'red', fillColor: 'red', fillOpacity: 0.28 }}
+                              pathOptions={{ color: "#ff0000", fillColor: "#ff0000", fillOpacity: 0.3 }}
                             />
                             <Circle
                               center={[selectedLocation.lat, selectedLocation.lon]}
                               radius={zones.severeRadius}
-                              pathOptions={{ color: 'orange', fillColor: 'orange', fillOpacity: 0.18 }}
+                              pathOptions={{ color: "#ff6600", fillColor: "#ff6600", fillOpacity: 0.2 }}
                             />
                             <Circle
                               center={[selectedLocation.lat, selectedLocation.lon]}
                               radius={zones.moderateRadius}
-                              pathOptions={{ color: 'yellow', fillColor: 'yellow', fillOpacity: 0.12 }}
+                              pathOptions={{ color: "#ffcc00", fillColor: "#ffcc00", fillOpacity: 0.15 }}
                             />
                             <Circle
                               center={[selectedLocation.lat, selectedLocation.lon]}
                               radius={zones.lightRadius}
-                              pathOptions={{ color: 'green', fillColor: 'green', fillOpacity: 0.08 }}
+                              pathOptions={{ color: "#00ff00", fillColor: "#00ff00", fillOpacity: 0.1 }}
                             />
                           </>
                         )
                       })()}
-                    </MapContainer>
-                  </div>
+                  </MapContainer>
+                </div>
+
+                <div className={`location-info ${!selectedLocation ? "location-info-empty" : ""}`}>
+                  {selectedLocation ? (
+                    <>
+                      📍 Local selecionado: {selectedLocation.lat}°, {selectedLocation.lon}°
+                    </>
+                  ) : (
+                    <>👆 Clique no mapa para selecionar o ponto de impacto</>
+                  )}
                 </div>
               </div>
 
-              {/* Impact control panel */}
-              <aside className="impact-panel">
-                <h3>Parâmetros de Impacto</h3>
-                <div className="panel-row">
-                  <label>Velocidade (km/s): <strong>{(userVelocity || 0) / 1000}</strong></label>
+              <aside className="parameters-panel">
+                <h3>⚙️ Parâmetros</h3>
+
+                <div className="parameter-group">
+                  <div className="parameter-label">
+                    <span>Velocidade</span>
+                    <span className="parameter-value">{(userVelocity / 1000).toFixed(1)} km/s</span>
+                  </div>
                   <input
                     type="range"
-                    min={5}
-                    max={70}
-                    step={0.5}
-                    value={(userVelocity || 20000) / 1000}
-                    onChange={(e) => setUserVelocity(Number(e.target.value) * 1000)}
+                    min={5000}
+                    max={70000}
+                    step={500}
+                    value={userVelocity}
+                    onChange={(e) => setUserVelocity(Number(e.target.value))}
                   />
                 </div>
 
-                <div className="panel-row">
-                  <label>Ângulo de entrada (°): <strong>{userAngle}</strong></label>
+                <div className="parameter-group">
+                  <div className="parameter-label">
+                    <span>Ângulo de entrada</span>
+                    <span className="parameter-value">{userAngle}°</span>
+                  </div>
                   <input
                     type="range"
                     min={5}
@@ -413,8 +633,11 @@ function App() {
                   />
                 </div>
 
-                <div className="panel-row">
-                  <label>Densidade (kg/m³): <strong>{userDensity}</strong></label>
+                <div className="parameter-group">
+                  <div className="parameter-label">
+                    <span>Densidade</span>
+                    <span className="parameter-value">{userDensity} kg/m³</span>
+                  </div>
                   <input
                     type="range"
                     min={500}
@@ -425,126 +648,156 @@ function App() {
                   />
                 </div>
 
-                <hr />
+                <div className="panel-row">
+                  <label>Threshold Airburst (m): <strong>{userAirburstThreshold}</strong></label>
+                  <input
+                    type="range"
+                    min={10}
+                    max={500}
+                    step={5}
+                    value={userAirburstThreshold}
+                    onChange={(e) => setUserAirburstThreshold(Number(e.target.value))}
+                  />
+                </div>
 
-                <h4>Resultado (selecionado)</h4>
-                {selectedMeteor ? (() => {
-                  const zones = computeImpactZones(selectedMeteor, { velocity: userVelocity, angle: userAngle, density: userDensity })
-                  if (!zones) return <div>Nenhuma informação suficiente.</div>
-                  return (
-                    <div className="zones-list">
-                      <div>Diâmetro médio: <strong>{zones.avgDiameter.toFixed(2)} m</strong></div>
-                      <div>Massa estimada: <strong>{Number(zones.mass).toExponential(3)} kg</strong></div>
-                      <div>Velocidade: <strong>{(zones.velocity / 1000).toFixed(2)} km/s</strong></div>
-                      <div>Energia: <strong>{zones.energyMt.toExponential(3)} Mt</strong></div>
-                      <div>Cratera (raio): <strong>{Math.round(zones.craterRadius)} m</strong></div>
-                      <div>Severa: <strong>{Math.round(zones.severeRadius)} m</strong></div>
-                      <div>Moderada: <strong>{Math.round(zones.moderateRadius)} m</strong></div>
-                      <div>Leve: <strong>{Math.round(zones.lightRadius)} m</strong></div>
-                      <div style={{ marginTop: 8 }}>
-                        <button className="btn btn-primary" onClick={startSimulation}>Aplicar e iniciar simulação</button>
+                {selectedLocation &&
+                  (() => {
+                    const zones = computeImpactZones(selectedMeteor, {
+                      velocity: userVelocity,
+                      angle: userAngle,
+                      density: userDensity,
+                    })
+                    if (!zones) return null
+
+                    return (
+                      <div className="impact-zones">
+                        <h4>Zonas de Impacto</h4>
+                        <div className="zone-item">
+                          <div className="zone-label">
+                            <span className="zone-color" style={{ background: "#ff0000" }}></span>
+                            Cratera
+                          </div>
+                          <span className="zone-value">{Math.round(zones.craterRadius)} m</span>
+                        </div>
+                        <div className="zone-item">
+                          <div className="zone-label">
+                            <span className="zone-color" style={{ background: "#ff6600" }}></span>
+                            Severa
+                          </div>
+                          <span className="zone-value">{Math.round(zones.severeRadius)} m</span>
+                        </div>
+                        <div className="zone-item">
+                          <div className="zone-label">
+                            <span className="zone-color" style={{ background: "#ffcc00" }}></span>
+                            Moderada
+                          </div>
+                          <span className="zone-value">{Math.round(zones.moderateRadius)} m</span>
+                        </div>
+                        <div className="zone-item">
+                          <div className="zone-label">
+                            <span className="zone-color" style={{ background: "#00ff00" }}></span>
+                            Leve
+                          </div>
+                          <span className="zone-value">{Math.round(zones.lightRadius)} m</span>
+                        </div>
                       </div>
-                    </div>
-                  )
-                })() : (
-                  <div>Selecione um meteoro para ver os resultados.</div>
-                )}
+                    )
+                  })()}
+
+                <button
+                  className="btn btn-primary simulate-button"
+                  onClick={startSimulation}
+                  disabled={!selectedLocation}
+                >
+                  🚀 Iniciar Simulação
+                </button>
               </aside>
             </div>
           </section>
         )}
 
-        {!loading && !error && meteors.length > 0 && (
-          <section ref={meteorListRef} className="meteor-selection">
-            <h2>Meteoros encontrados</h2>
-
-            {/* NEW: selected location banner */}
-            {selectedLocation && (
-              <div className="selected-location-banner">
-                <div>Local selecionado: {selectedLocation.lat}, {selectedLocation.lon}</div>
-                <div className="selected-actions">
-                  <button className="btn btn-secondary" onClick={() => setSelectedLocation(null)}>Limpar</button>
-                </div>
+        {simulationResults && (
+          <section ref={resultsSectionRef} className="section">
+            <div className="section-header">
+              <div className="section-number">5</div>
+              <div className="section-title">
+                <h2>Resultados da Simulação</h2>
+                <p>Análise completa do impacto do asteroide {selectedMeteor.name}</p>
               </div>
-            )}
+            </div>
 
-            <div className="meteor-grid">
-              {filteredMeteors.length === 0 ? (
-                <div className="empty">Nenhum meteoro corresponde ao filtro aplicado.</div>
-              ) : (
-                filteredMeteors.map((meteor) => {
-                  const diameter = meteor.estimated_diameter
-                  const avgDiameter = diameter
-                    ? (
-                      (diameter.meters.estimated_diameter_min + diameter.meters.estimated_diameter_max) /
-                      2
-                    ).toFixed(3)
-                    : "—"
-                  const approach = meteor.close_approach_data?.[0]
+            <div className="results-grid">
+              <div className="result-card highlight">
+                <div className="result-icon">💥</div>
+                <div className="result-label">Energia</div>
+                <div className="result-value">{simulationResults.energyMt.toExponential(2)} Mt</div>
+              </div>
 
-                  return (
-                    <div
-                      key={meteor.id}
-                      className={`meteor-card ${meteor.is_potentially_hazardous_asteroid ? "hazardous" : ""}`}
-                      onClick={() => handleSelectMeteorForSimulation(meteor)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleSelectMeteorForSimulation(meteor) }}
-                    >
-                      <div className="meteor-card-header">
-                        <h3>{meteor.name}</h3>
-                        {meteor.is_potentially_hazardous_asteroid && <span className="hazard-badge">⚠️ PERIGOSO</span>}
-                      </div>
-                      <div className="meteor-card-body">
-                        <div className="meteor-stat">
-                          <span className="stat-label">Diâmetro:</span>
-                          <span className="stat-value">{avgDiameter} Meters</span>
-                        </div>
-                        <div className="meteor-stat">
-                          <span className="stat-label">Magnitude:</span>
-                          <span className="stat-value">{meteor.absolute_magnitude_h}</span>
-                        </div>
-                        {approach && (
-                          <div className="meteor-stat">
-                            <span className="stat-label">Velocidade:</span>
-                            <span className="stat-value">
-                              {Number.parseFloat(approach.relative_velocity.kilometers_per_hour).toLocaleString()}{" "}
-                              km/h
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })
-              )}
+              <div className="result-card">
+                <div className="result-icon">⚖️</div>
+                <div className="result-label">Massa</div>
+                <div className="result-value">{Number(simulationResults.mass).toExponential(2)} kg</div>
+              </div>
+
+              <div className="result-card">
+                <div className="result-icon">📏</div>
+                <div className="result-label">Diâmetro</div>
+                <div className="result-value">{simulationResults.avgDiameter.toFixed(1)} m</div>
+              </div>
+
+              <div className="result-card">
+                <div className="result-icon">⚡</div>
+                <div className="result-label">Velocidade</div>
+                <div className="result-value">{(simulationResults.velocity / 1000).toFixed(1)} km/s</div>
+              </div>
+
+              <div className="result-card">
+                <div className="result-icon">🎯</div>
+                <div className="result-label">Ângulo</div>
+                <div className="result-value">{simulationResults.angleDeg}°</div>
+              </div>
+
+              <div className="result-card">
+                <div className="result-icon">🕳️</div>
+                <div className="result-label">Raio da Cratera</div>
+                <div className="result-value">{Math.round(simulationResults.craterRadius)} m</div>
+              </div>
+            </div>
+
+            <div className="impact-description">
+              <h4>📊 Análise do Impacto</h4>
+              <p>
+                <strong>Energia liberada:</strong> O impacto liberaria aproximadamente{" "}
+                <strong>{simulationResults.energyMt.toExponential(2)} megatons</strong> de energia TNT equivalente.
+                {simulationResults.energyMt > 1 && " Isso é comparável a uma explosão nuclear de grande escala."}
+              </p>
+              <p>
+                <strong>Cratera:</strong> Uma cratera com raio de aproximadamente{" "}
+                <strong>{Math.round(simulationResults.craterRadius)} metros</strong> seria formada no ponto de impacto.
+              </p>
+              <p>
+                <strong>Zona de destruição severa:</strong> Até{" "}
+                <strong>{Math.round(simulationResults.severeRadius)} metros</strong> do ponto de impacto, haveria
+                destruição quase total de estruturas.
+              </p>
+              <p>
+                <strong>Zona de danos moderados:</strong> Até{" "}
+                <strong>{Math.round(simulationResults.moderateRadius)} metros</strong>, estruturas sofreriam danos
+                significativos e haveria risco de ferimentos graves.
+              </p>
+              <p>
+                <strong>Zona de danos leves:</strong> Até{" "}
+                <strong>{Math.round(simulationResults.lightRadius)} metros</strong>, janelas quebrariam e haveria danos
+                menores a estruturas.
+              </p>
+            </div>
+
+            <div style={{ textAlign: "center", marginTop: "2rem" }}>
+              <button className="btn btn-primary" onClick={resetSimulation}>
+                🔄 Nova Simulação
+              </button>
             </div>
           </section>
-        )}
-
-        {/* NEW: Simulation modal */}
-        {showSimModal && (
-          <div className="sim-modal-overlay" onClick={closeModal}>
-            <div className="sim-modal" onClick={(e) => e.stopPropagation()}>
-              <h3>Simular impacto</h3>
-              <div style={{ marginBottom: 12 }}>
-                <strong>{selectedMeteor?.name}</strong>
-                <div style={{ color: '#b8b8d1', fontSize: 13 }}>
-                  {selectedMeteor?.is_potentially_hazardous_asteroid ? 'Perigoso' : 'Não perigoso'}
-                </div>
-                <div style={{ marginTop: 8 }}>
-                  Local: {selectedLocation ? `${selectedLocation.lat}, ${selectedLocation.lon}` : 'Nenhum local selecionado'}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
-                <button className="btn btn-primary" onClick={startSimulation}>Iniciar Simulação</button>
-              </div>
-
-              {simMessage && <div style={{ marginTop: 12, color: '#48dbfb' }}>{simMessage}</div>}
-            </div>
-          </div>
         )}
       </main>
 
@@ -557,15 +810,6 @@ function App() {
       </footer>
     </div>
   )
-}
-
-function estimateImpactRadius(meteor) {
-  if (!meteor) return 0
-  const diameter = meteor.estimated_diameter?.meters
-  if (!diameter) return 0
-  const avgDiameter = (diameter.estimated_diameter_min + diameter.estimated_diameter_max) / 2
-
-  return avgDiameter * 1.5 * 1000 //Rafael, é aqui que mexe na escala da explosão
 }
 
 export default App

@@ -6,86 +6,239 @@
 
 .app {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1b3d 50%, #0f1123 100%);
   color: #ffffff;
 }
 
 .app-header {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(10px);
-  padding: 2rem;
+  padding: 2.5rem 2rem;
   text-align: center;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .header-content h1 {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
-  background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb);
+  font-size: 2.8rem;
+  margin-bottom: 0.75rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .subtitle {
-  font-size: 1.1rem;
-  color: #b8b8d1;
+  font-size: 1.15rem;
+  color: #a0a0c0;
+  font-weight: 400;
 }
 
 .main-content {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 3rem 2rem;
 }
 
-/* Controls Section */
-.controls {
-  background: rgba(255, 255, 255, 0.05);
+/* Step indicator */
+.step-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 3rem;
+  flex-wrap: wrap;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 50px;
+  transition: all 0.3s ease;
+}
+
+.step-item.active {
+  background: rgba(102, 126, 234, 0.15);
+  border-color: rgba(102, 126, 234, 0.4);
+  box-shadow: 0 0 20px rgba(102, 126, 234, 0.2);
+}
+
+.step-item.completed {
+  background: rgba(72, 219, 251, 0.1);
+  border-color: rgba(72, 219, 251, 0.3);
+}
+
+.step-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.step-item.active .step-number {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.step-item.completed .step-number {
+  background: rgba(72, 219, 251, 0.3);
+}
+
+.step-label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #b0b0d0;
+}
+
+.step-item.active .step-label {
+  color: #ffffff;
+}
+
+.step-arrow {
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 1.2rem;
+}
+
+/* Section styling */
+.section {
+  background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 2rem;
+  border-radius: 20px;
+  padding: 2.5rem;
   margin-bottom: 2rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  scroll-margin-top: 2rem;
 }
 
-.controls form {
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.section-number {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.5rem;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.section-title {
+  flex: 1;
+}
+
+.section-title h2 {
+  font-size: 1.8rem;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.section-title p {
+  color: #a0a0c0;
+  font-size: 0.95rem;
+}
+
+/* Date selection */
+.date-form {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 2rem;
   align-items: center;
 }
 
 .date-inputs {
   display: flex;
-  gap: 1.5rem;
+  gap: 2rem;
   flex-wrap: wrap;
   justify-content: center;
+  width: 100%;
 }
 
-.date-inputs label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.date-input-group {
+  flex: 1;
+  min-width: 250px;
+  max-width: 350px;
+}
+
+.date-input-group label {
+  display: block;
+  margin-bottom: 0.5rem;
   font-weight: 500;
+  color: #e0e0f0;
+  font-size: 0.95rem;
 }
 
-.date-inputs input[type="date"] {
-  padding: 0.75rem;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.1);
+.date-input-group input[type="date"] {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
   color: #ffffff;
   font-size: 1rem;
+  transition: all 0.3s ease;
 }
 
-.date-inputs input[type="date"]::-webkit-calendar-picker-indicator {
+.date-input-group input[type="date"]:focus {
+  outline: none;
+  border-color: rgba(102, 126, 234, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.date-input-group input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
+  cursor: pointer;
+}
+
+.filter-options {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.filter-options:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.filter-options input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.filter-options label {
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #e0e0f0;
 }
 
 /* Buttons */
 .btn {
-  padding: 0.875rem 1.75rem;
-  border-radius: 10px;
+  padding: 1rem 2rem;
+  border-radius: 12px;
   border: none;
   font-size: 1rem;
   font-weight: 600;
@@ -93,7 +246,8 @@
   transition: all 0.3s ease;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  font-family: inherit;
 }
 
 .btn-primary {
@@ -107,42 +261,35 @@
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
 }
 
+.btn-primary:active {
+  transform: translateY(0);
+}
+
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.btn-select {
-  width: 100%;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  color: white;
-  margin-top: 1rem;
-}
-
-.btn-select:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 /* Loading */
 .loading-container {
   text-align: center;
-  padding: 3rem;
+  padding: 4rem 2rem;
 }
 
 .spinner {
-  width: 50px;
-  height: 50px;
+  width: 60px;
+  height: 60px;
   border: 4px solid rgba(255, 255, 255, 0.1);
   border-top-color: #667eea;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin: 0 auto 1rem;
+  margin: 0 auto 1.5rem;
 }
 
 @keyframes spin {
@@ -151,24 +298,24 @@
   }
 }
 
+.loading-container p {
+  color: #b0b0d0;
+  font-size: 1.1rem;
+}
+
 /* Error Message */
 .error-message {
-  background: rgba(255, 107, 107, 0.2);
-  border: 1px solid rgba(255, 107, 107, 0.5);
-  color: #ff6b6b;
-  padding: 1rem;
-  border-radius: 10px;
+  background: rgba(255, 107, 107, 0.15);
+  border: 1px solid rgba(255, 107, 107, 0.4);
+  color: #ff9999;
+  padding: 1.25rem;
+  border-radius: 12px;
   text-align: center;
   margin-bottom: 2rem;
+  font-size: 0.95rem;
 }
 
-/* Meteor Selection */
-.meteor-selection h2 {
-  text-align: center;
-  margin-bottom: 2rem;
-  font-size: 1.8rem;
-}
-
+/* Meteor Grid */
 .meteor-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -176,68 +323,99 @@
 }
 
 .meteor-card {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(10px);
   border-radius: 16px;
-  padding: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   cursor: pointer;
   transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.meteor-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.5), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .meteor-card:hover {
   transform: translateY(-5px);
-  border-color: rgba(102, 126, 234, 0.5);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+  border-color: rgba(102, 126, 234, 0.4);
+  box-shadow: 0 12px 30px rgba(102, 126, 234, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.meteor-card:hover::before {
+  opacity: 1;
 }
 
 .meteor-card.hazardous {
-  border-color: rgba(255, 107, 107, 0.5);
-  background: rgba(255, 107, 107, 0.05);
+  border-color: rgba(255, 107, 107, 0.4);
+  background: rgba(255, 107, 107, 0.06);
+}
+
+.meteor-card.hazardous::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 107, 107, 0.6), transparent);
 }
 
 .meteor-card.hazardous:hover {
-  box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+  box-shadow: 0 12px 30px rgba(255, 107, 107, 0.25);
+  border-color: rgba(255, 107, 107, 0.6);
 }
 
 .meteor-card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   gap: 1rem;
 }
 
 .meteor-card-header h3 {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   color: #ffffff;
-  line-height: 1.3;
+  line-height: 1.4;
+  font-weight: 600;
 }
 
 .hazard-badge {
   background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
-  padding: 0.25rem 0.75rem;
+  padding: 0.35rem 0.85rem;
   border-radius: 20px;
   font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
-  box-shadow: 0 2px 10px rgba(255, 107, 107, 0.3);
+  box-shadow: 0 2px 10px rgba(255, 107, 107, 0.4);
 }
 
 .meteor-card-body {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.85rem;
 }
 
 .meteor-stat {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.meteor-stat:last-child {
+  border-bottom: none;
 }
 
 .stat-label {
-  color: #b8b8d1;
+  color: #a0a0c0;
   font-size: 0.9rem;
 }
 
@@ -247,11 +425,341 @@
   font-size: 0.95rem;
 }
 
-/* Simulation Section */
-.simulation-section {
-  animation: fadeIn 0.5s ease;
+.meteor-card-footer {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
 }
 
+.btn-select {
+  width: 100%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 0.875rem;
+  font-size: 0.95rem;
+}
+
+.btn-select:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Map Section */
+.map-layout {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.map-container {
+  flex: 1;
+  min-width: 0;
+}
+
+.map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 600px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.map-wrapper .leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+  border-radius: 16px;
+}
+
+.location-info {
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+  background: rgba(72, 219, 251, 0.1);
+  border: 1px solid rgba(72, 219, 251, 0.3);
+  border-radius: 12px;
+  text-align: center;
+  font-weight: 500;
+  color: #48dbfb;
+}
+
+.location-info-empty {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #a0a0c0;
+}
+
+/* Parameters Panel */
+.parameters-panel {
+  width: 340px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem;
+}
+
+.parameters-panel h3 {
+  font-size: 1.3rem;
+  margin-bottom: 1.5rem;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.parameter-group {
+  margin-bottom: 2rem;
+}
+
+.parameter-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  color: #e0e0f0;
+  font-size: 0.9rem;
+}
+
+.parameter-value {
+  font-weight: 700;
+  color: #667eea;
+  font-size: 1rem;
+}
+
+.parameter-group input[type="range"] {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.parameter-group input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+.parameter-group input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+/* Ensure the threshold slider in .panel-row uses the same visual style as other parameter sliders */
+.panel-row input[type="range"] {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.panel-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+.panel-row input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+.impact-zones {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.impact-zones h4 {
+  font-size: 1.1rem;
+  margin-bottom: 1.25rem;
+  color: #feca57;
+}
+
+.zone-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.zone-item:last-child {
+  border-bottom: none;
+}
+
+.zone-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #b0b0d0;
+  font-size: 0.9rem;
+}
+
+.zone-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.zone-value {
+  font-weight: 600;
+  color: #ffffff;
+  font-size: 0.9rem;
+}
+
+.simulate-button {
+  width: 100%;
+  margin-top: 2rem;
+  padding: 1.125rem;
+  font-size: 1.05rem;
+}
+
+/* Results Section */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.result-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.result-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.result-card.highlight {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+  border-color: rgba(102, 126, 234, 0.4);
+}
+
+.result-icon {
+  font-size: 2.8rem;
+  margin-bottom: 0.75rem;
+}
+
+.result-label {
+  color: #a0a0c0;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.result-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.impact-description {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  padding: 2rem;
+  border-left: 4px solid #feca57;
+}
+
+.impact-description h4 {
+  margin-bottom: 1.25rem;
+  color: #feca57;
+  font-size: 1.3rem;
+}
+
+.impact-description p {
+  line-height: 1.7;
+  color: #d0d0e0;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+.impact-description strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Selected meteor banner */
+.selected-meteor-banner {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  border-radius: 12px;
+  padding: 1.25rem 1.75rem;
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.selected-meteor-info h4 {
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+  color: #ffffff;
+}
+
+.selected-meteor-info p {
+  color: #b0b0d0;
+  font-size: 0.9rem;
+}
+
+/* Footer */
+.footer {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2.5rem 2rem;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 4rem;
+}
+
+.footer p {
+  color: #a0a0c0;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.disclaimer {
+  color: #feca57 !important;
+  font-size: 0.9rem !important;
+}
+
+/* Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -263,306 +771,76 @@
   }
 }
 
-.simulation-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
-  gap: 1rem;
+.section {
+  animation: fadeIn 0.5s ease;
 }
 
-.simulation-header h2 {
-  font-size: 1.8rem;
-  margin-bottom: 0.5rem;
-}
-
-.selected-meteor-name {
-  color: #b8b8d1;
-  font-size: 1rem;
-}
-
-.simulation-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.map-container {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.map-container h3 {
-  margin-bottom: 1rem;
-  text-align: center;
-  color: #feca57;
-}
-
-.location-info {
-  margin-top: 1rem;
-  padding: 1rem;
-  background: rgba(72, 219, 251, 0.1);
-  border-radius: 8px;
-  text-align: center;
-  font-weight: 500;
-  color: #48dbfb;
-}
-
-/* Map square crop */
-.map-section {
-  margin: 1.25rem 0 2rem;
-  display: flex;
-  justify-content: center;
-}
-.map-crop {
-  flex: 1 1 auto;
-  min-width: 320px;
-  width: 100%;
-  max-width: calc(100% - 340px);
-}
-.map-square {
-  position: relative;
-  width: 100%;
-  /* Make it a square by using padding-top = width */
-  padding-top: 100%;
-  overflow: hidden;
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(0,0,0,0.2);
-}
-.map-inner {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-}
-
-/* Ensure leaflet canvas fills the square and matches style */
-.map-inner .leaflet-container {
-  height: 100% !important;
-  width: 100% !important;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 8px 30px rgba(2,6,23,0.6);
-}
-
-/* Results */
-.results-container {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 2rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  animation: slideUp 0.5s ease;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
+/* Responsive */
+@media (max-width: 1024px) {
+  .map-layout {
+    flex-direction: column;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  .parameters-panel {
+    width: 100%;
   }
-}
-
-.results-container h3 {
-  text-align: center;
-  margin-bottom: 2rem;
-  font-size: 1.8rem;
-  color: #feca57;
-}
-
-.results-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.result-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 1.5rem;
-  text-align: center;
-  transition: all 0.3s ease;
-}
-
-.result-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
-.result-card.highlight {
-  background: linear-gradient(135deg, rgba(255, 107, 107, 0.2), rgba(238, 90, 111, 0.2));
-  border-color: rgba(255, 107, 107, 0.5);
-}
-
-.result-card.danger {
-  background: rgba(255, 107, 107, 0.1);
-  border-color: rgba(255, 107, 107, 0.3);
-}
-
-.result-card.warning {
-  background: rgba(254, 202, 87, 0.1);
-  border-color: rgba(254, 202, 87, 0.3);
-}
-
-.result-icon {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.result-label {
-  color: #b8b8d1;
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
-}
-
-.result-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.result-note {
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
-  color: #ff6b6b;
-  font-weight: 600;
-}
-
-.impact-description {
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 12px;
-  padding: 1.5rem;
-  border-left: 4px solid #feca57;
-}
-
-.impact-description h4 {
-  margin-bottom: 1rem;
-  color: #feca57;
-}
-
-.impact-description p {
-  line-height: 1.6;
-  color: #e0e0e0;
-  margin-bottom: 1rem;
-}
-
-.impact-description strong {
-  color: #ffffff;
-  font-weight: 600;
-}
-
-/* Impact control panel and map row layout */
-.map-row {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-  width: 90vw;
-  height: 70vh;
-}
-
-/* Make map take about 80-85% and panel about 15-20% */
-.map-crop {
-  flex: 8.5 1 30%;
-  min-width: 0; /* allow flex children to shrink correctly */
-  width: 100%;
-  max-width: none;
-}
-
-.impact-panel {
-  flex: 1.5 0 15%;
-  width: auto;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  padding: 1rem;
-  border-radius: 12px;
-  color: #fff;
-  flex-shrink: 0;
-}
-
-/* Increase the map height to occupy most of the viewport */
-.map-square {
-  position: relative;
-  width: 100%;
-  padding-top: 0; /* remove square constraint */
-  height: 70vh; /* make the map taller and fill the viewport */
-  overflow: hidden;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(0,0,0,0.2);
-}
-
-.map-inner {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-}
-
-/* Ensure leaflet canvas fills the container */
-.map-inner .leaflet-container {
-  height: 100% !important;
-  width: 100% !important;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 8px 30px rgba(2,6,23,0.6);
-}
-
-@media (max-width: 1000px) {
-  .map-row { flex-direction: column; }
-  .impact-panel { width: 100%; }
-  .map-crop { max-width: 100%; }
-  .map-square { height: 50vh; }
-}
-
-@media (max-width: 420px) {
-  .selected-pin .pin-outer { width: 28px; height: 28px; }
-  .selected-pin .pin-inner { width: 12px; height: 12px; top: 5px; }
 }
 
 @media (max-width: 768px) {
   .header-content h1 {
-    font-size: 1.8rem;
+    font-size: 2rem;
   }
 
   .subtitle {
-    font-size: 0.95rem;
+    font-size: 1rem;
+  }
+
+  .main-content {
+    padding: 2rem 1rem;
+  }
+
+  .section {
+    padding: 1.75rem;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .date-inputs {
     flex-direction: column;
-    width: 100%;
   }
 
-  .date-inputs label {
-    width: 100%;
+  .date-input-group {
+    max-width: 100%;
   }
 
   .meteor-grid {
     grid-template-columns: 1fr;
   }
 
-  .simulation-header {
-    flex-direction: column;
-    align-items: flex-start;
+  .step-indicator {
+    gap: 0.5rem;
+  }
+
+  .step-item {
+    padding: 0.5rem 1rem;
+  }
+
+  .step-label {
+    font-size: 0.85rem;
+  }
+
+  .step-arrow {
+    display: none;
+  }
+
+  .map-wrapper {
+    height: 450px;
   }
 
   .results-grid {
     grid-template-columns: 1fr;
-  }
-
-  .map-container {
-    padding: 1rem;
   }
 }
