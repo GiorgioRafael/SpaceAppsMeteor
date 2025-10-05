@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react"
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from "react-leaflet"
 import "./App.css"
+import { ToastContainer, toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
 
 import * as L from "leaflet"
 import "leaflet/dist/leaflet.css"
@@ -46,6 +48,13 @@ function buildApiUrl(startDate, endDate) {
   return `/api/nasa/meteors?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`
 }
 
+const densityTemplates = {
+  "Zona Rural": 50,
+  "Subúrbio": 500,
+  "Área Urbana": 2000,
+  "Metrópole Densa": 10000,
+}
+
 function App() {
   const [currentStep, setCurrentStep] = useState(1)
   const [meteors, setMeteors] = useState([])
@@ -71,13 +80,6 @@ function App() {
   const mapSectionRef = useRef(null)
   const resultsSectionRef = useRef(null)
 
-    // Densidade populacional: templates e customizado
-  const densityTemplates = {
-    "Zona Rural": 50,
-    "Subúrbio": 500,
-    "Área Urbana": 2000,
-    "Metrópole Densa": 10000,
-  }
   const [selectedDensityTemplate, setSelectedDensityTemplate] = useState("Subúrbio")
   const [customDensity, setCustomDensity] = useState(500)
   const isCustomDensity = selectedDensityTemplate === "Customizado"
@@ -89,8 +91,6 @@ function App() {
     if (approach) {
       const vks = Number.parseFloat(approach.relative_velocity?.kilometers_per_second)
       if (!Number.isNaN(vks)) {
-        setUserVelocity(vks * 1000)
-      } else {
         const vkh = Number.parseFloat(approach.relative_velocity?.kilometers_per_hour)
         if (!Number.isNaN(vkh)) setUserVelocity((vkh * 1000) / 3600)
       }
@@ -648,7 +648,7 @@ function App() {
                       <div className="population-card crater-zone">
                         <div className="population-card-header">
                           <span className="zone-indicator" style={{ background: "#ff0000" }}></span>
-                          <span className="zone-name">Cratera</span>
+                          <span className="zone-name">{simulationResults.craterRadius == 0 ?  "Explosão Áerea" : "Cratera"}</span> {/* CRATERA2*/}
                         </div>
                         <div className="population-count">{populationData.estimates.crater.toLocaleString()}</div>
                         <div className="population-description">Destruição total</div>
