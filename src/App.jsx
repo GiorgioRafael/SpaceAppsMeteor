@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from "react-leaflet"
 import "./App.css"
 
 // react-leaflet + leaflet for interactive map
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet"
+
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png"
@@ -64,9 +65,38 @@ function App() {
   const [simMessage, setSimMessage] = useState(null)
   const meteorListRef = useRef(null)
 
+  // user-controlled parameters for simulation
+  const [userVelocity, setUserVelocity] = useState(null) // m/s
+  const [userAngle, setUserAngle] = useState(45) // degrees
+  const [userDensity, setUserDensity] = useState(3000) // kg/m3
+
   useEffect(() => {
     fetchForRange(startDate, endDate)
   }, [])
+
+  // when selectedMeteor changes, seed sliders with sensible defaults from data
+  useEffect(() => {
+    if (!selectedMeteor) return
+    const approach = selectedMeteor.close_approach_data?.[0]
+    if (approach) {
+      const vks = parseFloat(approach.relative_velocity?.kilometers_per_second)
+      if (!Number.isNaN(vks)) {
+        setUserVelocity(vks * 1000) // m/s
+      } else {
+        const vkh = parseFloat(approach.relative_velocity?.kilometers_per_hour)
+        if (!Number.isNaN(vkh)) setUserVelocity((vkh * 1000) / 3600)
+      }
+    } else {
+      // default 20 km/s
+      setUserVelocity(20000)
+    }
+
+    // default angle 45
+    setUserAngle(45)
+
+    // default density guess
+    setUserDensity(selectedMeteor.is_potentially_hazardous_asteroid ? 3500 : 3000)
+  }, [selectedMeteor])
 
   // Map click handler component using react-leaflet hook
   function MapClickHandler({ onMapClick }) {
@@ -90,12 +120,6 @@ function App() {
 
   // NEW: user clicked a meteor card to start a simulation with selectedLocation
   function handleSelectMeteorForSimulation(meteor) {
-    if (!selectedLocation) {
-      // If no location selected, still open modal so user is prompted
-      setSelectedMeteor(meteor)
-      setShowSimModal(true)
-      return
-    }
     setSelectedMeteor(meteor)
     setShowSimModal(true)
   }
@@ -137,7 +161,7 @@ function App() {
         const bodyText = await res.text()
 
         if (!res.ok) {
-          // include part of body in the error to help debugging (e.g., HTML error page)
+          // include part of the error to help debugging (e.g., HTML error page)
           const snippet = bodyText ? ` - ${bodyText.slice(0, 500)}` : ''
           throw new Error(`HTTP ${res.status} ${res.statusText}${snippet}`)
         }
@@ -188,6 +212,76 @@ function App() {
 
   const filteredMeteors = hazardousOnly ? meteors.filter((m) => m.is_potentially_hazardous_asteroid) : meteors
 
+  // compute zones from selected meteor and user inputs
+  function computeImpactZones(meteor, opts = {}) {
+    if (!meteor) return null
+    const diameterObj = meteor.estimated_diameter?.meters
+    if (!diameterObj) return null
+
+    const avgDiameter = (diameterObj.estimated_diameter_min + diameterObj.estimated_diameter_max) / 2 // meters
+
+    // mass: sphere volume * density
+    const r = avgDiameter / 2
+    const density = opts.density || userDensity || (meteor.is_potentially_hazardous_asteroid ? 3500 : 3000)
+    const volume = (4 / 3) * Math.PI * Math.pow(r, 3)
+    const mass = volume * density // kg
+
+    // velocity: prefer user, then approach data, then fallback 20 km/s
+    let v = opts.velocity || userVelocity
+    if (!v) {
+      const approach = meteor.close_approach_data?.[0]
+      if (approach) {
+        const vks = parseFloat(approach.relative_velocity?.kilometers_per_second)
+        if (!Number.isNaN(vks)) v = vks * 1000
+        else {
+          const vkh = parseFloat(approach.relative_velocity?.kilometers_per_hour)
+          if (!Number.isNaN(vkh)) v = (vkh * 1000) / 3600
+        }
+      }
+    }
+    if (!v) v = 20000 // m/s fallback
+
+    // angle: degrees, user or opts; default 45
+    const angleDeg = opts.angle || userAngle || 45
+    const angleRad = (angleDeg * Math.PI) / 180
+
+    // energy (J)
+    const energyJ = 0.5 * mass * v * v
+    const energyMt = energyJ / 4.184e15 // megatons TNT
+
+    // adjust energy by angle (vertical component) to approximate deposition
+    const effectiveFactor = Math.max(Math.sin(angleRad), 0.1)
+    const energyEffectiveMt = energyMt * effectiveFactor
+
+    // crater estimation: heuristic using cubic-root scaling with energy
+    const craterFromEnergy = 1000 * Math.pow(Math.max(energyEffectiveMt, 1e-12), 1 / 3) // meters
+    const craterFromSize = avgDiameter * 10
+    const craterRadius = Math.max(craterFromEnergy, craterFromSize)
+
+    const severeRadius = craterRadius * 1.5
+    const moderateRadius = craterRadius * 3
+    const lightRadius = craterRadius * 6
+
+    return {
+      avgDiameter,
+      mass,
+      density,
+      velocity: v,
+      angleDeg,
+      energyJ,
+      energyMt,
+      craterRadius,
+      severeRadius,
+      moderateRadius,
+      lightRadius,
+    }
+  }
+
+  function estimateImpactRadius(meteor) {
+    const zones = computeImpactZones(meteor)
+    return zones ? zones.craterRadius : 0
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -237,31 +331,126 @@ function App() {
         {/* Map: square cropped container above the list */}
         {!loading && !error && meteors.length > 0 && (
           <section className="map-section">
-            <div className="map-crop">
-              <div className="map-square">
-                <div className="map-inner">
-                  <MapContainer
-                    center={[0, 0]}
-                    zoom={2}
-                    scrollWheelZoom={true}
-                    style={{ height: "100%", width: "100%" }}
-                    whenCreated={(map) => setMapInstance(map)}
-                  >
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    <MapClickHandler onMapClick={handleMapClick} />
+            <div className="map-row">
+              <div className="map-crop">
+                <div className="map-square">
+                  <div className="map-inner">
+                    <MapContainer
+                      center={[0, 0]}
+                      zoom={2}
+                      scrollWheelZoom={true}
+                      style={{ height: "100%", width: "100%" }}
+                      whenCreated={(map) => setMapInstance(map)}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <MapClickHandler onMapClick={handleMapClick} />
 
-                    {/* show a temporary marker where the user clicked to confirm selection */}
-                    {selectedLocation && (
-                      <Marker position={[selectedLocation.lat, selectedLocation.lon]} icon={asteroidIcon} />
-                    )}
-                  </MapContainer>
+                      {/* show a temporary marker where the user clicked to confirm selection */}
+                      {selectedLocation && (
+                        <Marker position={[selectedLocation.lat, selectedLocation.lon]} icon={asteroidIcon} />
+                      )}
+
+                      {selectedLocation && selectedMeteor && (() => {
+                        const zones = computeImpactZones(selectedMeteor, { velocity: userVelocity, angle: userAngle, density: userDensity })
+                        if (!zones) return null
+                        return (
+                          <>
+                            <Circle
+                              center={[selectedLocation.lat, selectedLocation.lon]}
+                              radius={zones.craterRadius}
+                              pathOptions={{ color: 'red', fillColor: 'red', fillOpacity: 0.28 }}
+                            />
+                            <Circle
+                              center={[selectedLocation.lat, selectedLocation.lon]}
+                              radius={zones.severeRadius}
+                              pathOptions={{ color: 'orange', fillColor: 'orange', fillOpacity: 0.18 }}
+                            />
+                            <Circle
+                              center={[selectedLocation.lat, selectedLocation.lon]}
+                              radius={zones.moderateRadius}
+                              pathOptions={{ color: 'yellow', fillColor: 'yellow', fillOpacity: 0.12 }}
+                            />
+                            <Circle
+                              center={[selectedLocation.lat, selectedLocation.lon]}
+                              radius={zones.lightRadius}
+                              pathOptions={{ color: 'green', fillColor: 'green', fillOpacity: 0.08 }}
+                            />
+                          </>
+                        )
+                      })()}
+                    </MapContainer>
+                  </div>
                 </div>
               </div>
+
+              {/* Impact control panel */}
+              <aside className="impact-panel">
+                <h3>Parâmetros de Impacto</h3>
+                <div className="panel-row">
+                  <label>Velocidade (km/s): <strong>{(userVelocity || 0) / 1000}</strong></label>
+                  <input
+                    type="range"
+                    min={5}
+                    max={70}
+                    step={0.5}
+                    value={(userVelocity || 20000) / 1000}
+                    onChange={(e) => setUserVelocity(Number(e.target.value) * 1000)}
+                  />
+                </div>
+
+                <div className="panel-row">
+                  <label>Ângulo de entrada (°): <strong>{userAngle}</strong></label>
+                  <input
+                    type="range"
+                    min={5}
+                    max={90}
+                    step={1}
+                    value={userAngle}
+                    onChange={(e) => setUserAngle(Number(e.target.value))}
+                  />
+                </div>
+
+                <div className="panel-row">
+                  <label>Densidade (kg/m³): <strong>{userDensity}</strong></label>
+                  <input
+                    type="range"
+                    min={500}
+                    max={8000}
+                    step={50}
+                    value={userDensity}
+                    onChange={(e) => setUserDensity(Number(e.target.value))}
+                  />
+                </div>
+
+                <hr />
+
+                <h4>Resultado (selecionado)</h4>
+                {selectedMeteor ? (() => {
+                  const zones = computeImpactZones(selectedMeteor, { velocity: userVelocity, angle: userAngle, density: userDensity })
+                  if (!zones) return <div>Nenhuma informação suficiente.</div>
+                  return (
+                    <div className="zones-list">
+                      <div>Diâmetro médio: <strong>{zones.avgDiameter.toFixed(2)} m</strong></div>
+                      <div>Massa estimada: <strong>{Number(zones.mass).toExponential(3)} kg</strong></div>
+                      <div>Velocidade: <strong>{(zones.velocity / 1000).toFixed(2)} km/s</strong></div>
+                      <div>Energia: <strong>{zones.energyMt.toExponential(3)} Mt</strong></div>
+                      <div>Cratera (raio): <strong>{Math.round(zones.craterRadius)} m</strong></div>
+                      <div>Severa: <strong>{Math.round(zones.severeRadius)} m</strong></div>
+                      <div>Moderada: <strong>{Math.round(zones.moderateRadius)} m</strong></div>
+                      <div>Leve: <strong>{Math.round(zones.lightRadius)} m</strong></div>
+                      <div style={{ marginTop: 8 }}>
+                        <button className="btn btn-primary" onClick={startSimulation}>Aplicar e iniciar simulação</button>
+                      </div>
+                    </div>
+                  )
+                })() : (
+                  <div>Selecione um meteoro para ver os resultados.</div>
+                )}
+              </aside>
             </div>
-            <div style={{ textAlign: 'center', marginTop: 8 }} className="map-hint">Clique em um ponto no mapa para selecionar uma localização e escolher um meteoro para simular</div>
           </section>
         )}
 
@@ -287,9 +476,9 @@ function App() {
                   const diameter = meteor.estimated_diameter
                   const avgDiameter = diameter
                     ? (
-                        (diameter.meters.estimated_diameter_min + diameter.meters.estimated_diameter_max) /
-                        2
-                      ).toFixed(3)
+                      (diameter.meters.estimated_diameter_min + diameter.meters.estimated_diameter_max) /
+                      2
+                    ).toFixed(3)
                     : "—"
                   const approach = meteor.close_approach_data?.[0]
 
@@ -368,6 +557,15 @@ function App() {
       </footer>
     </div>
   )
+}
+
+function estimateImpactRadius(meteor) {
+  if (!meteor) return 0
+  const diameter = meteor.estimated_diameter?.meters
+  if (!diameter) return 0
+  const avgDiameter = (diameter.estimated_diameter_min + diameter.estimated_diameter_max) / 2
+
+  return avgDiameter * 1.5 * 1000 //Rafael, é aqui que mexe na escala da explosão
 }
 
 export default App

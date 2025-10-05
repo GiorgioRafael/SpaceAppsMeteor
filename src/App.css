@@ -319,8 +319,10 @@
   justify-content: center;
 }
 .map-crop {
+  flex: 1 1 auto;
+  min-width: 320px;
   width: 100%;
-  max-width: 900px; /* adjust max size as desired */
+  max-width: calc(100% - 340px);
 }
 .map-square {
   position: relative;
@@ -460,78 +462,70 @@
   font-weight: 600;
 }
 
-/* Footer */
-.footer {
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(10px);
-  padding: 2rem;
-  text-align: center;
-  margin-top: 3rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.footer p {
-  color: #b8b8d1;
-  margin-bottom: 0.5rem;
-}
-
-.disclaimer {
-  font-size: 0.85rem;
-  color: #feca57;
-}
-
-/* Selected location banner */
-.selected-location-banner {
+/* Impact control panel and map row layout */
+.map-row {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
   gap: 1rem;
-  padding: 0.75rem 1rem;
-  background: rgba(72, 219, 251, 0.06);
-  border: 1px solid rgba(72, 219, 251, 0.12);
-  border-radius: 10px;
-  color: #48dbfb;
-  margin-bottom: 1rem;
+  align-items: flex-start;
+  width: 90vw;
+  height: 70vh;
 }
 
-.selected-actions .btn {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.9rem;
-}
-
-/* Simulation modal */
-.sim-modal-overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(2,6,23,0.7);
-  z-index: 2000;
-  padding: 1rem;
-}
-
-.sim-modal {
-  background: linear-gradient(180deg, rgba(20,20,40,0.98), rgba(8,8,18,0.98));
-  border-radius: 12px;
-  padding: 1.25rem;
-  max-width: 520px;
+/* Make map take about 80-85% and panel about 15-20% */
+.map-crop {
+  flex: 8.5 1 30%;
+  min-width: 0; /* allow flex children to shrink correctly */
   width: 100%;
+  max-width: none;
+}
+
+.impact-panel {
+  flex: 1.5 0 15%;
+  width: auto;
+  background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 12px 40px rgba(2,6,23,0.8);
+  padding: 1rem;
+  border-radius: 12px;
+  color: #fff;
+  flex-shrink: 0;
 }
 
-.sim-modal h3 {
-  margin-bottom: 0.5rem;
-  color: #feca57;
+/* Increase the map height to occupy most of the viewport */
+.map-square {
+  position: relative;
+  width: 100%;
+  padding-top: 0; /* remove square constraint */
+  height: 70vh; /* make the map taller and fill the viewport */
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0,0,0,0.2);
 }
 
-/* asteroid icon small tweak */
-.asteroid-icon img {
-  filter: drop-shadow(0 6px 14px rgba(0,0,0,0.45));
+.map-inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
-/* small responsive tweak */
+/* Ensure leaflet canvas fills the container */
+.map-inner .leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+}
+
+@media (max-width: 1000px) {
+  .map-row { flex-direction: column; }
+  .impact-panel { width: 100%; }
+  .map-crop { max-width: 100%; }
+  .map-square { height: 50vh; }
+}
+
 @media (max-width: 420px) {
   .selected-pin .pin-outer { width: 28px; height: 28px; }
   .selected-pin .pin-inner { width: 12px; height: 12px; top: 5px; }
@@ -570,11 +564,5 @@
 
   .map-container {
     padding: 1rem;
-  }
-}
-
-@media (max-width: 420px) {
-  .map-crop {
-    max-width: 100%;
   }
 }
